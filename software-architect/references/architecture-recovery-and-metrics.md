@@ -27,25 +27,22 @@ every **data store** with its owning module.
 
 ### Timebox
 
-| Depth | Budget | Covers | Stop when |
+The overall review depth (quick / pass / deep), its budget and the report sections it must fill are defined once in
+[../SKILL.md](../SKILL.md) ("Review a repository"). This table is the recovery share of each depth.
+
+| Depth | Recovery budget | Covers | Stop when |
 |---|---|---|---|
-| **Skim** | ~15 min | §2 steps 1-4 and 10; a module list and a guessed layer order | You can name the build units, entry points and composition root |
-| **Pass** | ~1 h | All of §2, a tool-generated module graph (§4-5), one scenario trace (§6), churn top 20 (§11) | You can draw the three views and list 3-5 suspected divergences |
+| **Quick** | ~15-20 min | §2 steps 1-4 and 10; a module list and a guessed layer order | You can name the build units, entry points and composition root |
+| **Pass** | ~45 min | All of §2, a tool-generated module graph (§4-5), one scenario trace (§6), churn top 20 (§11) | You can draw the three views and list 3-5 suspected divergences |
 | **Deep dive** | half day+ | Reflexion model (§8), metrics (§10), change coupling (§11), 2-3 traced scenarios | Every finding in the report has level-A or level-B evidence |
 
-State the depth you ran in the output block (§13). Never present a skim as a full recovery.
+State the depth you ran in the output block (§13). Never present a quick pass as a full recovery.
 
 ### Evidence levels and citation
 
-This table is the single definition of the A-D scale; [review-playbook.md](review-playbook.md) and the report template
-use the same levels.
-
-| Level | Meaning | Cite as |
-|---|---|---|
-| **A: tool-verified** | Produced by a command over the whole codebase | Command + trimmed excerpt of output + commit SHA |
-| **B: read in code** | You opened the file and saw it | `path/to/File.kt:120-134` (+ SHA once per report) |
-| **C: inferred** | From names, folder layout, docs, comments, config | "inferred from `docs/arch.md`" or "inferred from package names"; flag as unverified |
-| **D: reported** | A person or ticket said so | Who/where; never the sole basis for a high-severity finding |
+Use the A-D scale defined in [../SKILL.md](../SKILL.md) ("Evidence rules"): A measured (command + output + SHA),
+B observed (`path/File.kt:120-134`), C inferred (say from what; flag as unverified), D assumed or reported (never the
+sole basis for a Blocker or Major).
 
 Record `git rev-parse --short HEAD` once, at the start. Line numbers without a SHA rot.
 
@@ -53,6 +50,18 @@ Record `git rev-parse --short HEAD` once, at the start. Line numbers without a S
 
 Run in order. Each step names what to look for and the signal that matters.
 
+0. **Snapshot and file universe.**
+   ```bash
+   git rev-parse --short HEAD; git status --short | wc -l          # SHA; uncommitted files (review HEAD, note N)
+   git rev-parse --is-shallow-repository; git rev-list --count HEAD  # "true" or a count of 1 = no usable history
+   git ls-files | rg -v '^(\.claude/worktrees|build|dist|node_modules|kotlin-js-store|\.venv)/|/(build|generated)/' > files.txt
+   ```
+   Use `files.txt` (tracked files only) as the universe for every count, grep and hotspot; plain `find` also picks up
+   stale worktree copies (`.claude/worktrees/`), build output, `kotlin-js-store/`, `.db` files and logs, and can
+   double file counts. With `rg`, pass the same exclusions as `-g '!.claude/worktrees/**'` etc., or pipe `files.txt`
+   through `xargs rg`. On a shallow clone, ask before `git fetch --unshallow` (network; changes the repo); otherwise
+   mark churn, hotspots and co-change "not checked: shallow clone" and use file size only as a reading pointer.
+   List the exclusions in the report's Scope and method.
 1. **Manifests and build graph.** Find every build file (§3). List build units and their declared inter-unit edges.
    This is the most reliable module view you will get; start here, not in `src/`.
 2. **Entry points.** `main` functions, `Application` subclasses, Android manifest activities/services, `server.ts` /
@@ -99,8 +108,8 @@ Run in order. Each step names what to look for and the signal that matters.
 | Gradle (JVM/Android) | `settings.gradle(.kts)`, each `build.gradle(.kts)`, `gradle/libs.versions.toml`, `buildSrc/` or `build-logic/` convention plugins | `include(":a", ":b:c")` gives the units; `implementation(project(":x"))` / `api(project(":x"))` / `projects.x` give edges (`projects.x` type-safe accessors exist only if `settings.gradle(.kts)` has `enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")`; still a feature preview, so version-dependent). `api` leaks the dependency to consumers |
 | Kotlin Multiplatform | as Gradle, plus `kotlin { sourceSets { ... } }` | Source sets (`commonMain`, `jvmMain`, `androidMain`, `iosMain`, `wasmJsMain`) and their `dependencies { }`; `expect`/`actual` declarations mark the platform seam |
 | Maven | root `pom.xml` `<modules>`, each module `pom.xml`, `<dependencyManagement>` | `<dependency>` on sibling `groupId:artifactId` |
-| npm / pnpm / yarn | root `package.json` `workspaces`, `pnpm-workspace.yaml`, each package `package.json` | `dependencies` on `workspace:*` or sibling names; `tsconfig.json` `paths` and `references`; `nx.json` + `project.json` tags; `turbo.json` pipelines |
-| Python | `pyproject.toml` (`[project]`, `[tool.poetry]`, `[tool.importlinter]`), `setup.cfg`, `src/` layout, `requirements*.txt` | Imports only (packages rarely declare internal edges); `[tool.importlinter]` contracts if present |
+| npm / pnpm / yarn / Bun | root `package.json` `workspaces` (also Bun, with `bun.lock` or older `bun.lockb`; `bun run --filter` runs per workspace), `pnpm-workspace.yaml`, each package `package.json` | `dependencies` on `workspace:*` or sibling names; `tsconfig.json` `paths` and `references`; `nx.json` + `project.json` tags; `turbo.json` pipelines |
+| Python | `pyproject.toml` (`[project]`, `[tool.poetry]`, `[tool.importlinter]`), `setup.cfg`, `src/` layout, `requirements*.txt`; uv workspaces: root `[tool.uv.workspace] members` + `uv.lock` | Imports; uv workspace members depend on each other via `[tool.uv.sources] x = { workspace = true }`; `[tool.importlinter]` contracts if present |
 | Go | `go.mod`, `go.work`, `cmd/`, `internal/`, `pkg/` | Imports; `internal/` is compiler-enforced visibility; `go.work` lists local modules |
 | .NET | `*.sln`, each `*.csproj`, `Directory.Build.props`, `Directory.Packages.props` | `<ProjectReference Include="..\X\X.csproj" />` |
 | Rust | root `Cargo.toml` `[workspace] members`, each crate `Cargo.toml` | `[dependencies] x = { path = "../x" }` or `x.workspace = true` |
@@ -111,13 +120,30 @@ Prefer the build tool's own graph for module edges and a language-level tool for
 whose behaviour is stable across recent versions; flags do drift, so **verify against the installed version**
 (`--help`) before quoting output in a report.
 
+**Side effects.** Commands marked *(writes)* create or update build directories and caches in the repo (`build/`,
+`.gradle/`, `.kotlin/`, `target/`, `node_modules/`, `.venv/`), may download dependencies and may start daemons. Skip
+them when the repo must stay untouched and use the static alternatives below; `./gradlew --offline
+--project-cache-dir /tmp/<x>` reduces the writes but does not remove them. The Python and TS extractors and the grep
+fallback read files only.
+
+**Static module graph (no build tool run)**
+
+```bash
+rg -n 'include\s*\(|^\s*include\s+["\x27]' settings.gradle*                  # Gradle units
+rg -n 'project\(\s*["\x27]:|projects\.[a-zA-Z]' -g '*.gradle' -g '*.gradle.kts'   # Gradle unit edges
+rg -n '<module>' -g 'pom.xml'                                                  # Maven units; edges: sibling <artifactId>
+rg -n '"workspace:|"file:\.\./' -g 'package.json'                                # JS workspace edges
+```
+
+Read `settings.gradle(.kts)` by hand too: `include(":a", ":b")` spans lines, and `projectDir` remapping changes paths.
+
 **JVM**
 
 ```bash
-./gradlew projects                                              # module tree
-./gradlew :app:dependencies --configuration runtimeClasspath    # KMP: e.g. jvmRuntimeClasspath
-./gradlew :app:dependencyInsight --dependency okhttp --configuration runtimeClasspath
-mvn dependency:tree                                             # add -pl <module> to scope
+./gradlew projects                                              # (writes) module tree
+./gradlew :app:dependencies --configuration runtimeClasspath    # (writes) KMP: e.g. jvmRuntimeClasspath
+./gradlew :app:dependencyInsight --dependency okhttp --configuration runtimeClasspath   # (writes)
+mvn dependency:tree                                             # (writes ~/.m2, may download) add -pl <module>
 jdeps -summary -recursive -cp 'libs/*' app.jar                  # jar-to-jar
 jdeps -verbose:package -cp 'libs/*' app.jar                     # package-to-package
 jdeps --dot-output out/ -verbose:package app.jar                # .dot files for Graphviz
@@ -129,6 +155,44 @@ jdeps --dot-output out/ -verbose:package app.jar                # .dot files for
 JDKs); for multi-release jars add `--multi-release <jdk-version>`. Check `jdeps --help` on the installed JDK.
 
 **TypeScript / JavaScript**
+
+Zero-install default (stdlib Python; resolves `./`, `../`, ESM `.js` specifiers and `compilerOptions.paths` aliases
+such as `@/*`; does not follow `extends`, so merge an inherited `paths` by hand; bare package imports are dropped):
+
+```python
+# usage: python3 tsedges.py <tsconfig.json> <src-dir> | sort | uniq -c | sort -rn > edges.txt
+import json, os, re, sys
+cfg_path, src = sys.argv[1], sys.argv[2]
+raw = open(cfg_path, encoding="utf-8").read()
+raw = re.sub(r'("(?:\\.|[^"\\])*")|/\*.*?\*/|//[^\n]*', lambda m: m.group(1) or "", raw, flags=re.S)
+raw = re.sub(r",\s*([}\]])", r"\1", raw)               # tsconfig allows comments and trailing commas
+opts = json.loads(raw).get("compilerOptions", {})      # "extends" is NOT followed: merge by hand if used
+base = os.path.normpath(os.path.join(os.path.dirname(cfg_path), opts.get("baseUrl", ".")))
+aliases = [(k.rstrip("*"), [os.path.join(base, v.rstrip("*")) for v in vs])
+           for k, vs in opts.get("paths", {}).items()]
+EXTS = ["", ".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mts", "/index.ts", "/index.tsx", "/index.js"]
+SPEC = re.compile(r"""(?:from\s+|import\s*\(\s*|require\s*\(\s*|^\s*import\s+)['"]([^'"]+)['"]""", re.M)
+def to_file(p):
+    for e in EXTS:
+        c = p + e
+        if os.path.isfile(c): return os.path.relpath(c)
+    if p.endswith(".js"): return to_file(p[:-3])       # ESM style "./x.js" pointing at x.ts
+    return None
+for d, _, files in os.walk(src):
+    if "node_modules" in d: continue
+    for name in files:
+        if not re.search(r"\.(m?[jt]sx?)$", name): continue
+        f = os.path.join(d, name)
+        for spec in SPEC.findall(open(f, encoding="utf-8", errors="replace").read()):
+            if spec.startswith("."):
+                cands = [os.path.normpath(os.path.join(d, spec))]
+            else:
+                cands = [os.path.normpath(t + spec[len(k):]) for k, ts in aliases if spec.startswith(k) for t in ts]
+            hit = next((r for r in map(to_file, cands) if r), None)
+            if hit: print(f"{os.path.relpath(f)} -> {hit}")   # bare package imports (react, zod) are dropped
+```
+
+Tool-based (`npx` downloads into the npm cache; run from outside the repo or only when a devDependency exists):
 
 ```bash
 npx madge --circular --extensions ts,tsx src/                   # cycles; add --ts-config tsconfig.json for paths
@@ -144,6 +208,50 @@ folder-level reporters (`--output-type ddot`, `archi`, or `--collapse "^src/[^/]
 check `--help` of the installed version.
 
 **Python**
+
+Zero-install default (stdlib `ast`; resolves relative imports and expands `from pkg import name` to `pkg.name` when
+`name` is a module, which the grep pattern cannot; also counts imports under `if TYPE_CHECKING:`, so check those):
+
+```python
+# usage: python3 pyedges.py <src-root> <top-package> | sort | uniq -c | sort -rn > edges.txt
+import ast, pathlib, sys
+root, top = pathlib.Path(sys.argv[1]), sys.argv[2]
+mods = {}                                              # dotted module name -> (file, is_package)
+for f in (root / top).rglob("*.py"):
+    parts = list(f.relative_to(root).with_suffix("").parts)
+    is_pkg = parts[-1] == "__init__"
+    mods[".".join(parts[:-1] if is_pkg else parts)] = (f, is_pkg)
+def resolve(name):                                     # longest prefix that is a known internal module
+    while name and name not in mods:
+        name = name.rpartition(".")[0]
+    return name
+for mod, (f, is_pkg) in sorted(mods.items()):
+    pkg = mod if is_pkg else mod.rpartition(".")[0]
+    try:
+        tree = ast.parse(f.read_text(encoding="utf-8"), str(f))
+    except (SyntaxError, UnicodeDecodeError):
+        print(f"skip {f}", file=sys.stderr); continue
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Import):
+            targets = [a.name for a in n.names]
+        elif isinstance(n, ast.ImportFrom):
+            if n.level:                                # relative: level 1 = this package, 2 = parent ...
+                p = pkg.split(".")
+                if n.level - 1 >= len(p): continue
+                base = ".".join(p[: len(p) - (n.level - 1)] + ([n.module] if n.module else []))
+            else:
+                base = n.module or ""
+            # "from app import crud" -> app.crud when crud is a module, else app
+            targets = [base if a.name == "*" else f"{base}.{a.name}" for a in n.names]
+        else:
+            continue
+        for t in targets:
+            to = resolve(t)
+            if to and to != mod:
+                print(f"{mod} -> {to}")
+```
+
+Tool-based (pydeps needs Graphviz for images):
 
 ```bash
 pydeps mypkg --max-bacon 2 --cluster          # needs Graphviz; --noshow to only write the file
@@ -201,10 +309,61 @@ Other languages, same pipeline with a different pattern:
 
 | Language | Pattern (`-r '$1'`) | Note |
 |---|---|---|
-| Python | `^\s*(?:from\|import)\s+([\w.]+)` | Relative imports (`from . import x`) need resolving against the file's package |
-| TS/JS | `from\s+['"]([^'"]+)['"]` and `require\(['"]([^'"]+)['"]\)` | Resolve `./` and `../` against the file path; map `tsconfig` `paths` aliases |
+| Python | `^\s*(?:from\|import)\s+([\w.]+)` | Coarse: loses submodule edges (`from app import crud` yields `app`) and relative imports; use the `ast` extractor above |
+| TS/JS | `from\s+['"]([^'"]+)['"]` and `require\(['"]([^'"]+)['"]\)` | Use the TS extractor above for `./`, `../` and `paths` aliases |
 | Go | prefer `go list` above | |
 | C# | `^using\s+([\w.]+);` | Namespaces need not match folders |
+
+### Single-package or flat modules
+
+The package-level graph is empty, silently, when most files share one package: same-package references need no
+import. Common in KMP starters and small services (e.g. 73 of 84 Kotlin files in one package). Detect it first:
+
+```bash
+git ls-files '*.kt' '*.java' | xargs rg -I --no-line-number -o '^package\s+[\w.]+' | sort | uniq -c | sort -rn
+# Python/TS: count files per top-level directory instead
+```
+
+If one package (or one build unit) holds most of the code:
+
+1. Collapse by Gradle module and source set (`composeApp/src/commonMain`, `server/src/main`) from the paths; that is
+   the module view.
+2. Recover intra-module edges at file level from declarations. For Kotlin, collect top-level non-private
+   declarations per file and search other files for them as whole words:
+
+```python
+# usage: git ls-files '*.kt' | python3 ktdecl.py | sort | uniq -c | sort -rn > file_edges.txt
+# Edges "fileA -> fileB" when fileA mentions a top-level, non-private declaration of fileB.
+import re, sys, collections
+files = [l.strip() for l in sys.stdin if l.strip()]
+DECL = re.compile(r"^(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|internal|expect|actual|data|sealed|enum|abstract|open|"
+                  r"inline|value|annotation|suspend|operator|infix|const|lateinit|fun)\s+)*"
+                  r"(?:class|interface|object|fun|val|var|typealias)\s+(?:<[^>]*>\s*)?(?:[\w.<>?, ]+\.)?(\w+)", re.M)
+STRIP = re.compile(r'"""[\s\S]*?"""|"(?:\\.|[^"\\\n])*"|/\*[\s\S]*?\*/|//[^\n]*')
+src = {f: STRIP.sub(" ", open(f, encoding="utf-8", errors="replace").read()) for f in files}
+owners = collections.defaultdict(set)                  # name -> files declaring it at top level (column 0)
+for f, text in src.items():
+    for name in DECL.findall(text):
+        owners[name].add(f)
+collide = {n: fs for n, fs in owners.items() if len(fs) > 1}
+for n, fs in sorted(collide.items()):
+    print(f"collision {n}: {' '.join(sorted(fs))}", file=sys.stderr)
+for f, text in src.items():
+    for tok in set(re.findall(r"\b[A-Za-z_]\w*\b", text)):
+        for g in owners.get(tok, ()):
+            if g != f and tok not in collide:
+                print(f"{f} -> {g}")
+```
+
+   Each line is one referenced name, so `uniq -c` counts how many of B's declarations A uses. Comments and strings
+   are stripped roughly. Names declared in several files (`expect`/`actual` pairs, same-named helpers in client and
+   server) are reported on stderr and skipped: resolve them by hand. Confirm every edge you cite with
+   `rg -nw '<name>' <file>` (level B). Private and member declarations are ignored by design.
+3. Group files into elements by name or responsibility (routes, persistence, wallet, UI screens) with the §5 path
+   regexes and aggregate.
+4. Report the signal: the whole module is one package, so layering cannot be enforced by package rules (E4 in
+   [review-playbook.md](review-playbook.md)); enforcement needs subpackages, Gradle modules, or Konsist rules on
+   file names.
 
 ## 5. Collapse the file graph into an architecture graph
 
@@ -278,7 +437,7 @@ processes; two modules may only talk over a queue).
 | Recover | Where |
 |---|---|
 | Deployment units | Dockerfiles (`COPY`/`CMD` show which module ships), Helm/k8s `Deployment`s, serverless functions, mobile/desktop artifacts |
-| Module → artifact | Build files (`application { mainClass }`, `jar`/`shadowJar`, `bin`, `[project.scripts]`, `cmd/*`), Dockerfile build stages |
+| Module → artifact | Build files (`application { mainClass }`, `jar`/`shadowJar`, `bin`, `[project.scripts]`, `cmd/*`), Dockerfile build stages. A multi-stage `COPY --from=<stage>` that embeds one workspace's output in another's package (an SPA built into `backend/app/frontend`) is a build/deploy edge: record it as module -> artifact even though no import exists |
 | Environments | Compose profiles, Helm values per env, Terraform workspaces, `.env.*`, CI deploy jobs |
 | Config and secrets | Env vars read in code (`System.getenv`, `process.env`, `os.environ`, `os.Getenv`), config files, secret managers (Vault, AWS/GCP secret managers, k8s `Secret`), hard-coded values (a finding) |
 | CI stages | Build → test → scan → package → deploy; which checks gate merge; whether architecture tests run |
@@ -481,7 +640,22 @@ Caveats:
 - Renames split a file's history unless you follow them; code-maat recommends `--no-renames`, so moved files appear as
   new ones. Check `git log --follow` for key files.
 - Exclude generated and vendored files (`build/`, `dist/`, `*.lock`, `*_pb.*`, `generated/`) before ranking.
-- A young repo or a single-author repo gives weak signals; say so.
+- **Shallow clone** (`git rev-parse --is-shallow-repository` prints `true`): history is truncated. Ask before
+  `git fetch --unshallow`; otherwise write "not checked: shallow clone" for churn, hotspots, co-change and ownership,
+  and use file size only as a pointer for where to read.
+- **Young (< ~3 months) or single-author repo**: commit counts carry little signal. Use the whole history, weight by
+  lines changed rather than commits, and read commit-message themes as fragility signals:
+
+  ```bash
+  git log --no-merges --numstat --format= | awk 'NF==3 && $1!="-" {c[$3]+=$1+$2} END {for (f in c) print c[f], f}' \
+  | sort -rn | head -30                                              # lines changed per file, whole history
+  git log --no-merges --format=%s | rg -i -o 'race|retry|fallback|timeout|flaky|revert|workaround|hotfix|deadlock' \
+  | tr A-Z a-z | sort | uniq -c | sort -rn                           # recurring themes
+  git log --no-merges --format='%h %s' -i -E --grep='race|retry|fallback|revert' --name-only   # which files
+  ```
+
+  Files that recur under "fix race", "retry" or "fallback" commits are fragile areas; read them first. State the
+  reduced confidence in the report, and skip ownership analysis for a single author (bus factor is 1 by definition).
 
 ## 12. From metrics to quality-attribute claims
 
@@ -505,7 +679,9 @@ Paste into [../templates/architecture-review-report.md](../templates/architectur
 
 ```markdown
 ### As-is architecture (recovered)
-- Commit: `<sha>` · Depth: skim | pass | deep dive · Tools: <gradle projects, madge 8.x, ...>
+- Commit: `<sha>` · Working tree: clean | N uncommitted files (reviewed at HEAD) · History: full | shallow | N commits
+- Depth: quick | pass | deep · Tools: <static settings.gradle parse, pyedges.py, madge 8.x, ...> · Read-only: yes | no
+- Excluded from the file universe: <.claude/worktrees/, build/, kotlin-js-store/, generated/, ...>
 - Build units: <list> · Entry points: <file:line, ...> · Composition root: <file:line or "implicit: N singletons">
 - External systems: <name → connector → module> · Data stores: <store → owning module(s)>
 - Deployment units: <artifact ← modules> · Environments: <list> · Config/secrets: <sources>
@@ -514,7 +690,7 @@ Paste into [../templates/architecture-review-report.md](../templates/architectur
 - Layer order (by fan-in/fan-out): <top → bottom>
 - Reflexion vs <intended model source>: convergences N · divergences N (top 3 with counts + file:line) · absences N
 - Cycles: <SCCs with members>
-- Hotspots (churn × complexity, window: <12 months>): <top 5 files>
+- Hotspots (churn × complexity, window: <12 months>): <top 5 files> or "not checked: shallow clone"
 - Hidden coupling (co-change without static edge): <top pairs>
 - Unverified (level C/D) claims: <list>
 ```

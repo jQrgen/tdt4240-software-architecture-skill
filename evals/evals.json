@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "Review PR #231 for layering violations. It adds a 'refund' use case to our Kotlin backend (modules: api, application, domain, infrastructure).",
-      "expected_output": "Runs git diff --stat base...HEAD (or gh pr diff) and reads the full diff; loads intended-architecture sources (ADRs, arch tests, build files) for touched modules; classifies the change; maps each new import edge onto an allowed-dependency table and flags e.g. domain importing an infrastructure/ORM/HTTP type with an OBSERVED file:line and quoted import; checks bypassed ports, idempotency of the refund, timeouts on the payment call, contract changes; returns the PR-variant report with a verdict (Approve / Approve with follow-ups / Request changes), at most ~7 findings each with severity, confidence, threatened QA, evidence, concrete fix, effort S/M/L and a preventing fitness function (e.g. ArchUnit or Konsist rule). No style nits.",
+      "expected_output": "Runs git diff --stat base...HEAD (or gh pr diff) and reads the full diff; loads intended-architecture sources (ADRs, arch tests, build files) for touched modules; classifies the change; maps each new import edge onto an allowed-dependency table and flags e.g. domain importing an infrastructure/ORM/HTTP type with a level-B (observed) file:line and quoted import; checks bypassed ports, idempotency of the refund, timeouts on the payment call, contract changes; returns the PR-variant report with a verdict (Approve / Approve with follow-ups / Request changes), at most ~7 findings each with severity, confidence, threatened QA, evidence, concrete fix, effort S/M/L and a preventing fitness function (e.g. ArchUnit or Konsist rule). No style nits.",
       "files": []
     },
     {
@@ -22,7 +22,7 @@
     {
       "id": 4,
       "prompt": "Recover the architecture of this repo. I inherited it last week and nobody documented anything.",
-      "expected_output": "Reads build files, entry points and package tree; runs read-only graph tooling or falls back to grep/build graph and says so; identifies build units, composition root, module dependency graph, cycles, external systems, data stores and deployment units, each with OBSERVED/MEASURED evidence; produces Mermaid sketches of module, C&C and allocation views; states an INFERRED intended model because no docs exist; lists hotspots from git history as pointers, not verdicts; separates AS-IS from any TO-BE suggestions; offers a quick vs deep pass.",
+      "expected_output": "Reads build files, entry points and package tree; runs read-only graph tooling or falls back to grep/build graph and says so; identifies build units, composition root, module dependency graph, cycles, external systems, data stores and deployment units, each with level A/B evidence; produces Mermaid sketches of module, C&C and allocation views; states a level-C (inferred) intended model because no docs exist; lists hotspots from git history as pointers, not verdicts; separates AS-IS from any TO-BE suggestions; runs the quick pass by default (without asking in non-interactive runs), excludes worktree copies and build output from the file universe, checks for a shallow clone, and says what a deeper pass would add.",
       "files": []
     },
     {
@@ -52,7 +52,7 @@
     {
       "id": 9,
       "prompt": "We have a cyclic dependency between the 'billing' and 'accounts' packages in our Java app. How do we break it without a big refactor?",
-      "expected_output": "Cites the cycle with OBSERVED file:line imports in both directions; proposes the smallest structural change (dependency inversion via an interface owned by one side, extracting a shared kernel, or events) with tradeoffs and a runner-up; shows code for the change labelled with file paths; adds a cycle check (ArchUnit slices().should().beFreeOfCycles() or jdeps-based check) wired into the build, flagging version-dependent API; migration steps that keep main green.",
+      "expected_output": "Cites the cycle with level-B file:line imports in both directions; proposes the smallest structural change (dependency inversion via an interface owned by one side, extracting a shared kernel, or events) with tradeoffs and a runner-up; shows code for the change labelled with file paths; adds a cycle check (ArchUnit slices().should().beFreeOfCycles() or jdeps-based check) wired into the build, flagging version-dependent API; migration steps that keep main green.",
       "files": []
     },
     {

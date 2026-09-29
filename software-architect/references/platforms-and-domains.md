@@ -1,4 +1,4 @@
-# Platform and domain contexts: cloud/distributed, containers, mobile, edge/IoT, ML-enabled, quantum, games/real-time
+# Platform and domain contexts: cloud/distributed, containers, mobile and KMP, edge/IoT, ML-enabled, quantum, games/real-time, payments/blockchain
 
 Use this file when the **deployment context or problem domain** changes which quality attributes (QAs)
 dominate and which tactics are defaults. Each section gives: architecturally significant
@@ -25,7 +25,8 @@ chapter on machine learning or on edge/IoT computing** in either edition; sectio
 practitioner material and are labelled as such. Game architecture (section 7) draws on Rollings &
 Morris and Nystrom, not SAiP.
 
-**How to use.** Identify every context that applies (a mobile game with a cloud backend hits 1, 3, 7).
+**How to use.** Identify every context that applies (a mobile game with a cloud backend hits 1, 3, 7; a payment or
+wallet service adds 9).
 Seed the utility tree from section 8, then confirm with the ASR questions or record an assumption.
 
 ---
@@ -249,6 +250,58 @@ Decide (record the choice and the answers in an ADR):
 **Pitfalls:** trusting the emulator's Wi-Fi (test with network conditioning and airplane mode);
 "offline support" that is a read cache with no write path or conflict policy; web-style hot-fix
 assumptions (a bad binary stays installed; only server-side switches help).
+
+### 3.5 Kotlin Multiplatform full-stack (Ktor server + Compose Multiplatform client + `shared`)
+
+A common KMP shape: `server` (Ktor, JVM), `composeApp` (Compose Multiplatform: Android, desktop, iOS, `wasmJs`),
+`shared` (KMP library with DTOs, protocol constants, validation), sometimes a thin `androidApp`.
+
+Expected module graph and allowed edges:
+
+| From \ To | shared | composeApp | server |
+|---|---|---|---|
+| server | allowed (`implementation(projects.shared)`) | forbidden | - |
+| composeApp | allowed | - | forbidden (talk over HTTP/WebSocket only) |
+| shared | - | forbidden | forbidden |
+| androidApp | via composeApp | allowed | forbidden |
+
+Checks:
+- **`shared` is a published contract.** It is depended on by both sides and is concrete, so it sits in the zone of pain
+  (A≈0, I≈0) by design. Keep it small (DTOs, IDs, protocol constants, pure validation), version its wire format, and
+  review changes to it as API changes (I3). Anything server-only (DB types, secrets, Ktor server APIs) is a leak.
+- **Protocol co-change without compile coupling.** Client screens and server routes often agree on JSON field names,
+  route strings or status codes that live in neither `shared` nor a schema. Run the §11 co-change analysis in
+  [architecture-recovery-and-metrics.md](architecture-recovery-and-metrics.md) between `composeApp/**` and
+  `server/**`; pairs that always change together with no `shared` edge are hidden coupling. Move the agreed names
+  into `shared` or a serialized DTO.
+- **`commonMain` stays platform-free:** `rg -n '^import (java\.|javax\.|android\.)' --glob '**/commonMain/**'`
+  must return nothing (C6). JVM-only libraries (JDBC, most Java SDKs, `java.time` without kotlinx-datetime) cannot be
+  used from `wasmJsMain` or `iosMain`; check each source set's `dependencies { }` in `kotlin { sourceSets { } }`.
+- **Per-target dependencies:** a library added to `commonMain` must publish every enabled target; building all targets
+  in CI is the only full check.
+- **Flat packages:** starters often keep most files in one package, so package rules cannot enforce layers (E4);
+  recover file-level edges with [architecture-recovery-and-metrics.md](architecture-recovery-and-metrics.md) §4
+  "Single-package or flat modules", and introduce subpackages before adding Konsist layer rules.
+- **Server layering:** route handlers (Ktor `routing { }`) should call services that do not import `io.ktor`. Konsist
+  sketch (Konsist is pre-1.0; property names such as `packagee` are version-dependent, check the docs):
+
+  ```kotlin
+  // server/src/test/kotlin/ArchitectureTest.kt
+  import com.lemonappdev.konsist.api.Konsist
+  import com.lemonappdev.konsist.api.verify.assertFalse
+  import org.junit.jupiter.api.Test
+
+  class ArchitectureTest {
+      @Test
+      fun server_domain_does_not_import_ktor() =
+          Konsist.scopeFromModule("server").files
+              .filter { it.packagee?.name?.contains(".domain") == true }
+              .flatMap { it.imports }
+              .assertFalse { it.name.startsWith("io.ktor") }
+  }
+  ```
+- **Browser client security:** CORS and forwarded headers on the Ktor server (C11); the Wasm client is public code, so
+  it holds no secrets (C2).
 
 ---
 
@@ -609,3 +662,51 @@ listeners become the game loop.
 | ML-enabled / LLM | Availability (fallbacks), performance and cost budgets, modifiability (model swap), deployability (rollback) | Model/provider behind a port, versioned artefacts, shared feature code, shadow/canary, eval harness | Model and prompt versions pinned; fallback path exists; output validated; drift/cost monitoring |
 | Quantum (hybrid) | Security (crypto agility), performance of the classical-quantum interface | Coprocessor behind a service interface; swappable crypto | Hard-coded crypto algorithms |
 | Games / real-time | Performance (frame budget, latency), determinism, content modifiability, cheat resistance, portability | Fixed-timestep loop, ECS or components, pools, double buffer, event queue, authoritative server + prediction, platform ports | God screen; singleton state; platform APIs in core; per-frame allocation; IO on render thread |
+
+---
+
+## 9. Payments, wallets and blockchain (practitioner material, beyond SAiP)
+
+Value transfer makes some side effects **irreversible**: a broadcast transaction, a sent payout or a redeemed voucher
+cannot be rolled back, only compensated. Integrity (no loss, no double spend, no phantom success) usually tops the
+utility tree, ahead of latency.
+
+**ASR questions.** Which operations are irreversible? What is the maximum acceptable loss per incident? Which network
+(mainnet, testnet, regtest) does each environment use, and who can change it? How many confirmations make a payment
+final for this amount? What happens when the node, wallet or provider is down: queue, refuse, or degrade?
+
+**Default tactics.**
+- **Record intent before the side effect.** Persist the operation (idempotency key, amount, destination, and for
+  blockchains the signed transaction or its txid, which is known before broadcast) in a state `sending`; fail the
+  request if that write fails; broadcast; mark `sent`. On restart, reconcile `sending` rows against the chain or
+  provider before any retry (R10).
+- **Idempotency at every boundary.** Client-supplied or derived keys, a unique constraint on them, and replay of the
+  stored result; retrying a broadcast with the same signed transaction is safe, re-building and re-signing is not.
+- **Finality policy.** Credit or release goods only after N confirmations chosen per amount; handle reorgs by
+  re-checking the confirmation height; treat 0-conf as provisional.
+- **Explicit network per environment.** Chain or network chosen from configuration at the composition root and shown
+  in the UI and logs; a startup check that production refuses test networks and vice versa; addresses validated for the
+  expected network prefix.
+- **No fakes in production paths.** Simulated wallets or stub payment adapters live in test or dev source sets and are
+  never selected by a runtime health check (R9).
+- **One guard for funds.** A single module owns the signing key and the send call and enforces limits (per request,
+  per user, per day) and a kill switch (C10).
+- **Durable queue for payouts.** Payout requests go through a job table with leases, age-based give-up, and a dead
+  state that a human reviews ([architectural-patterns.md](architectural-patterns.md) §3.3 durable job queue).
+
+**Review signals.**
+
+| Signal | Smell / QA |
+|---|---|
+| `object Simulated*`/`Fake*` implementing the wallet or payment port in main sources, chosen per request | R9; integrity |
+| `save()` in a `try`/`runCatching` whose failure is logged, followed by `send`/`broadcast`/`transfer` | R10; integrity |
+| txid or idempotency key stored only after broadcast; retry that rebuilds the transaction | R10, R1 |
+| Chain/network selected by a default value or a string compare scattered across modules | C2 (environment config), C10 |
+| Balance or confirmation read from one source without checking sync state or height | Availability, integrity |
+| Signing key or seed in config files, env files committed to git, or logs | C2 (Blocker) |
+| Payout endpoint without per-user and global limits | R6, C10 |
+
+**Fitness functions.** Fault-injection test (DB write fails -> no broadcast); retry test (timeout after broadcast ->
+no second send); startup test (production config with a test network fails fast); architecture test that only the
+guard module imports the signing/sending API.
+

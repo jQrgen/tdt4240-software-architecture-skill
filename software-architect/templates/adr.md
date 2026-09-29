@@ -9,14 +9,15 @@ reused or renumbered, including for rejected or superseded records.
 
 **Guidance.** One decision per ADR. Once Accepted, the record is immutable: to change course,
 write a new ADR and set the old one to `Superseded by ADR-NNNN` (only the Status line may be edited).
-Write one when the decision meets an ADR-worthy signal in [documentation.md section 7](../references/documentation.md);
+Write one when the decision meets an ADR-worthy signal in [documentation.md section 7](../references/documentation.md)
+(the single trigger list);
 skip choices reversible in a single PR. Keep it to 1-2 pages. Every ADR must name how it is enforced; an
 unenforced structural decision decays into folklore (see [fitness functions](../references/fitness-functions.md)).
 If the code already violates the decision, enforce with a baseline (ArchUnit freeze store, dependency-cruiser
 known violations; see fitness-functions.md section 5) and state the burn-down plan under Consequences.
 For decisions already embodied in code, write a Reconstructed ADR whose Evidence cites the `file:line` and the
 commit that introduced it; use "accepted by default" when nobody chose deliberately.
-Use scenario IDs in the `QS-<letter><n>` form (QS-M1, QS-A1) from the from the [design workflow](../references/design-workflow.md); sensitivity and
+Use scenario IDs in the `QS-<letter><n>` form (QS-M1, QS-A1) from the [design workflow](../references/design-workflow.md); sensitivity and
 tradeoff points use the ATAM meaning from [evaluation methods](../references/evaluation-methods.md).
 
 ```markdown
@@ -32,6 +33,8 @@ tradeoff points use the ATAM meaning from [evaluation methods](../references/eva
 - Driving QA scenarios: <scenario IDs, e.g. QS-M1, QS-A1>
 - Constraints: <fixed tech, regulation, team skills, deadlines>
 - Evidence: <path/File.kt:123, dependency-graph output, latency p99 measurement>
+- Assumptions: <ASSUMED items and open question IDs, e.g. "200 req/s peak (Q2)"> ; falsified by: <metric, load test or
+  product decision that would show the assumption wrong>
 
 ## Options considered
 | Option | QAs + | QAs - | Cost | Reversibility |
@@ -80,6 +83,8 @@ Not enforceable: review checklist item <X>, because <reason no tool can check it
 - Constraints: must keep the current provider through Q3; PCI scope must not grow.
 - Evidence: `checkout/domain/OrderService.kt:88` imports `com.stripe.model.PaymentIntent`;
   jdeps shows 11 domain classes depending on `com.stripe`.
+- Assumptions: ASSUMED a second provider is needed within 12 months (Q1); falsified by: the product roadmap drops
+  multi-provider support, in which case option B's cost buys only QS-T1.
 
 ## Options considered
 | Option | QAs + | QAs - | Cost | Reversibility |

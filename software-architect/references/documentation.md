@@ -390,6 +390,11 @@ their record.
 | Adds an external system or significant library/framework | Payment provider, DI framework, ORM |
 | Sets a cross-cutting convention | Error model, logging/tracing standard, auth approach |
 | Reviewers keep asking "why is it like this?" | Any recurring question |
+| Affects more than one team or deployable | Shared schema, event contract, platform library |
+| Answers an (H,H) utility-tree scenario, or knowingly accepts debt or breaks a stated rule | Accepting a dual write until the outbox lands |
+
+This table is the single list of ADR triggers; [templates/adr.md](../templates/adr.md) and
+[design-workflow.md](design-workflow.md) §11 point here.
 
 Not ADR-worthy: local refactors, naming, choices reversible in a single PR.
 

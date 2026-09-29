@@ -334,6 +334,15 @@ Format: intent · QAs · code signature · erosion · enforce · don't use when.
 - Enforce: a test that runs the edge component with the cloud endpoint unreachable and asserts its degraded-mode scenario; a rule that entitlement/payment decisions are only made in server modules ([fitness-functions.md](fitness-functions.md#3-non-structural-fitness-functions)).
 - Don't use when: all work fits the latency budget from the cloud and no data has privacy or bandwidth constraints.
 
+**Durable job queue / competing consumers** (beyond the SAiP catalogue; Hohpe and Woolf's *Competing Consumers*).
+- Intent: a deferred side effect (email, webhook, payment, export) is recorded as a job in durable storage and executed by one or more workers that claim jobs, so it survives dependency outages and restarts. Unlike the transactional outbox, the side effect *is* the job; there may be no event or broker at all.
+- QAs: + availability of the request path (it only enqueues), no lost work, retry without blocking users, horizontal scaling of workers; − latency until the effect happens, at-least-once execution (handlers must be idempotent), a worker process to deploy and monitor.
+- Signature: a jobs/outbox table with `status` (`pending -> sending -> sent | retry | dead`), `attempts`, `run_after`, `locked_until`/`lease_expires_at`, `last_error`; a claim query with Postgres `SELECT ... FOR UPDATE SKIP LOCKED` (9.5+); or a library: River (Go, Postgres), Oban (Elixir, Postgres), Solid Queue and good_job (Rails), Hangfire (.NET), Celery, RQ, Dramatiq, ARQ (Python, broker/Redis), BullMQ (Node, Redis), Sidekiq (Ruby, Redis), SQS with a visibility timeout.
+- Design rules: enqueue in the caller's transaction (the job exists if and only if the business change committed); a lease or visibility timeout longer than the worst-case batch (batch size x per-call timeout + margin); a dead state after a delivery deadline, with an alert and a replay path; idempotent handlers or an idempotency key sent to the receiver; payloads that hold references, not secrets or unbounded PII; a purge job for finished rows. Retry rules in [quality-attributes-runtime.md](quality-attributes-runtime.md) §1 (e) Retry.
+- Erosion: must-not-lose work sent through in-memory mechanisms (FastAPI `BackgroundTasks`, `asyncio.create_task`, an executor); a lease shorter than the batch duration (duplicates); no dead state (poison jobs retry forever); workers started inside every web replica with no concurrency limit; handlers that are not idempotent.
+- Enforce: a test that kills the worker mid-batch and asserts each job runs to completion exactly once in effect; a test that a second worker cannot claim a leased row; an architecture rule that the mail/webhook client is imported only by job handlers ([fitness-functions.md](fitness-functions.md)).
+- Don't use when: loss is acceptable and stated (best-effort analytics), or the caller needs the result synchronously.
+
 ### 3.4 Resilience set
 Tactic details live in [quality-attributes-runtime.md](quality-attributes-runtime.md). Signature and erosion here:
 
@@ -407,6 +416,7 @@ Find the dominant scenario or constraint, start from the default, and switch onl
 | Unknown, changing receivers of events | Publish-subscribe | Direct calls behind an interface | There is one receiver and it must reply |
 | Long cross-service business process | Saga (orchestration) | Choreography | Few steps (about three or fewer) and teams own each step independently |
 | Reliable events from a DB change | Transactional outbox | CDC directly on business tables | You accept exposing the table schema as the event contract |
+| A deferred side effect (email, webhook, payment) must survive a dependency outage and restarts | Outbox/job table + worker on the existing DB (`FOR UPDATE SKIP LOCKED`, or a DB-backed job library) | Broker + task library (Celery, BullMQ, Sidekiq) | Sustained load above roughly 50 jobs/s, or a broker is already operated |
 | Must work offline / on poor networks | Offline-first sync | Cache with request queue | Data is read-mostly and conflicts are impossible |
 | Replace a legacy system gradually | Strangler fig | Branch by abstraction | The legacy part lives inside the same codebase |
 | Security zones between UI, logic and data | Multi-tier | Single tier with strict authz | Everything runs on one trusted host |

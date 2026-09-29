@@ -85,15 +85,15 @@ Paths under `references/` and `templates/` are inside `software-architect/`.
 | `references/design-workflow.md` | ASRs, question bank, six-part scenarios, utility tree, ADD 3.0, tradeoff reasoning, anti-overengineering, architecture debt |
 | `references/quality-attributes-runtime.md` | Availability, performance, security, safety, energy efficiency, usability: scenarios, tactics, code signals |
 | `references/quality-attributes-change.md` | Modifiability, testability, deployability, integrability, cross-QA tradeoff matrix |
-| `references/architectural-patterns.md` | Classic and practitioner patterns with code signatures, erosion signals, selection guide, anti-patterns |
+| `references/architectural-patterns.md` | Classic and practitioner patterns (incl. outbox and durable job queues) with code signatures, erosion signals, selection guide, anti-patterns |
 | `references/design-patterns-in-code.md` | GoF and related in-process patterns as tactic carriers |
-| `references/module-layout-and-interfaces.md` | Package layouts, allowed-dependency tables, interface design, skeletons in several languages, migration recipe |
+| `references/module-layout-and-interfaces.md` | Package layouts (incl. brownfield FastAPI), allowed-dependency tables, interface design, skeletons in several languages, migration recipe |
 | `references/fitness-functions.md` | Enforcement ladder, architecture tests per ecosystem, ratchets, CI wiring |
-| `references/architecture-recovery-and-metrics.md` | Dependency graphs, reflexion models, Martin metrics, git-history hotspots |
+| `references/architecture-recovery-and-metrics.md` | Dependency graphs (incl. zero-install and static extractors, flat-package recovery), reflexion models, Martin metrics, git-history hotspots |
 | `references/review-playbook.md` | Smell catalogue, PR checklist, finding rules, severity rubric, worked example |
 | `references/evaluation-methods.md` | Mini-ATAM, ATAM, lightweight evaluation, CBAM |
 | `references/documentation.md` | ISO/IEC/IEEE 42010, Views and Beyond, 4+1, arc42, C4, ADRs, docs-as-code |
-| `references/platforms-and-domains.md` | Cloud, containers, mobile, edge/IoT, ML-enabled, quantum, games and real-time |
+| `references/platforms-and-domains.md` | Cloud, containers, mobile and KMP full-stack, edge/IoT, ML-enabled, quantum, games and real-time, payments and blockchain |
 | `templates/adr.md` | ADR with a mandatory "Enforced by" field, plus a filled example |
 | `templates/architecture-description.md` | Design brief and lean arc42/C4/42010 architecture description |
 | `templates/architecture-review-report.md` | PR and repository review reports |
@@ -109,8 +109,7 @@ tactics, architectural and design patterns, Views and Beyond, Kruchten's 4+1 vie
 IEEE 1471 / ISO/IEC/IEEE 42010, ATAM and CBAM, and the chapters on cloud, mobile and
 edge systems. The skill turns that material into working procedures for real codebases,
 adding practitioner tools the syllabus does not cover: ADRs, C4, arc42, fitness functions
-and behavioural code analysis. This repository started as a study companion for the course
-and was rewritten as a practitioner skill. It is not affiliated with or endorsed by NTNU.
+and behavioural code analysis. It is not affiliated with or endorsed by NTNU.
 
 ## Credits
 

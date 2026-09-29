@@ -59,7 +59,7 @@ name or rule comment:
 | Modifiability: a new feature ships without editing other features | Increase cohesion: Split module; Reduce coupling: Restrict dependencies | features independent of each other; `core` never depends on `feature` | 1 (build) |
 | Deployability: any module builds and releases alone | Reduce coupling: Restrict dependencies | no package cycles | 2 (PR) |
 | Performance: p95 checkout < 300 ms at 200 rps | Performance: Control resource demand, Manage resources | load-test threshold | n/a, nightly load test (section 3) |
-| Interoperability: old clients keep working for 2 releases | Interoperability: Manage interfaces; Modifiability: Encapsulate | API/ABI compatibility check | PR gate (API-compat tool, section 3) |
+| Integrability (3e: Interoperability): old clients keep working for 2 releases | Integrability (3e: Interoperability): Adapt / Limit dependencies (3e: Manage interfaces); Modifiability: Encapsulate | API/ABI compatibility check | PR gate (API-compat tool, section 3) |
 
 Name each test/rule after its ADR (`adr012_core_does_not_depend_on_feature`) so a failure points to the rationale.
 
@@ -273,6 +273,10 @@ https://github.com/pahen/madge.
 
 ### 2.4 Python: import-linter
 
+Checked against import-linter 2.15 (contract types `layers`, `forbidden`, `independence`, `protected`,
+`acyclic_siblings`). Older 2.x releases lack some of them; run `pip show import-linter` and read
+https://import-linter.readthedocs.io/ for the installed version.
+
 ```toml
 # pyproject.toml (also supported: setup.cfg [importlinter] sections or a .importlinter file)
 [tool.importlinter]
@@ -280,35 +284,63 @@ root_package = "acme"
 include_external_packages = true   # needed to forbid third-party packages such as sqlalchemy
 
 [[tool.importlinter.contracts]]
+id = "layers"
 name = "ADR-007 layers"
 type = "layers"
 layers = ["acme.api", "acme.application", "acme.domain"]
 
 [[tool.importlinter.contracts]]
+id = "domain-pure"
 name = "ADR-007 domain is framework-free"
 type = "forbidden"
 source_modules = ["acme.domain"]
 forbidden_modules = ["acme.infrastructure", "sqlalchemy", "django"]
+# allow_indirect_imports = false   # the default: indirect chains count too (see below)
 
 [[tool.importlinter.contracts]]
+id = "adapters-wired-in-root"
+name = "ADR-008 only the composition roots import adapters"
+type = "protected"
+protected_modules = ["acme.adapters"]
+allowed_importers = ["acme.main", "acme.wiring"]
+
+[[tool.importlinter.contracts]]
+id = "no-cycles"
+name = "ADR-010 no cycles between sibling packages"
+type = "acyclic_siblings"
+ancestors = ["acme"]
+
+[[tool.importlinter.contracts]]
+id = "features-independent"
 name = "ADR-009 features are independent"
 type = "independence"
 modules = ["acme.billing", "acme.shipping", "acme.catalog"]
 ```
 
-- Layers are listed **highest first**; a lower layer importing a higher one fails, which also rules out cycles
-  between layers. `independence` forbids imports among the listed siblings in both directions.
+- **`layers`**: listed **highest first**; a lower layer importing a higher one fails, which also rules out cycles
+  between those layers.
+- **`forbidden` follows indirect imports** unless `allow_indirect_imports = true`. A chain such as
+  `acme.main -> acme.api -> acme.utils -> emails` breaks a contract that forbids `emails` from `acme.main`. Decide
+  deliberately: strict indirect checking is what catches route -> utils -> vendor chains; allowing indirect imports
+  checks only direct edges.
+- **`protected`** is the direct way to say "only X may import Y" (adapters only from the composition root, the
+  vendor wrapper only from its adapter). It checks direct imports; with `as_packages` (default true) descendants
+  count as part of each listed module.
+- **`acyclic_siblings`** fails on import cycles between the children of each `ancestors` package (to a default
+  `depth` of 10); use it as the Python "no cycles" rule instead of relying on layers to imply it.
+- **`independence`** forbids imports among the listed siblings in both directions.
+- **`id`** lets you run one contract: `lint-imports --contract domain-pure` (repeatable). Contracts without an `id`
+  cannot be selected this way.
 - CI: `lint-imports` (non-zero exit on a broken contract). It statically follows imports, including those inside
-  functions, but not `importlib` or string-based dynamic imports.
+  functions and under `if TYPE_CHECKING:` (set `exclude_type_checking_imports = true` in `[tool.importlinter]` to
+  skip those), but not `importlib` or string-based dynamic imports.
 - Baseline: `ignore_imports = ["acme.domain.legacy -> acme.infrastructure.db"]` per contract, each with a comment
-  naming the owner and removal ticket.
+  naming the owner and removal ticket. `unmatched_ignore_imports_alerting` already defaults to `"error"`, so a stale
+  ignore that no longer matches fails the run; do not lower it.
 - **pydeps** is for visualisation (`pydeps acme --show-cycles`), not enforcement.
 - Startup budget: `python -X importtime -c "import acme.api" 2> importtime.log` writes per-module import cost to
   stderr. Cumulative times are nested (a parent's figure includes its children), so do not sum that column: read the
   cumulative value on the line for the top-level module (`acme.api`), or sum the `self` column, and fail above a budget.
-
-Verify against the installed version: options such as `root_packages` (plural), `containers` for layers and newer
-contract types depend on the release; see https://import-linter.readthedocs.io/.
 
 ### 2.5 Go
 
@@ -426,8 +458,8 @@ Map each to its QA scenario and tactic. Fast, deterministic ones on PRs; noisy o
 | Performance: Control resource demand, e.g. Reduce computational overhead (hot path) | Microbenchmark vs baseline | **JMH** has no pass/fail; export `-rf json` and compare with a script. **pytest-benchmark**: `--benchmark-autosave` on main, `--benchmark-compare --benchmark-compare-fail=mean:10%` on PRs. **Go**: `go test -bench=. -count=10` on base and head, compare with `benchstat`; benchstat reports but does not fail, so wrap it. CI runners are ephemeral: `--benchmark-compare` reads the local `.benchmarks/` directory and benchstat needs the base run's output, so persist the main-branch baseline as a CI cache/artifact keyed by commit, or run base and head in the same job (checkout base, bench, checkout head, bench, compare). Run on dedicated or pinned runners; shared CI runners are noisy. |
 | Performance: Control resource demand (web payload) | Bundle size budget | `size-limit` (`[{ "path": "dist/index.js", "limit": "50 kB" }]`, `npx size-limit`), or the bundler's own budget (Angular `budgets`; webpack `performance: { hints: "error", maxAssetSize: ... }`, since without `hints: "error"` webpack only warns). |
 | Performance: Control resource demand (startup) | Startup / first-frame budget | Android **Macrobenchmark** `StartupTimingMetric`; iOS `XCTApplicationLaunchMetric` in `measure(metrics:)`; Python `-X importtime`; JVM: time to readiness probe. Assert against a budget with tolerance. |
-| Interoperability: Manage interfaces; Modifiability: Encapsulate (published API) | API/ABI compatibility | Kotlin **binary-compatibility-validator** (`apiDump`, `apiCheck`; KGP 2.2+ ships an experimental built-in ABI validation that is superseding it). Java **japicmp** (Maven plugin or CLI). TS **API Extractor** (`api-extractor run`; `--local` updates the report file). Protobuf **`buf breaking --against '.git#branch=main'`**. OpenAPI: a diff tool such as oasdiff in breaking-change mode, pinned. |
-| Interoperability: Manage interfaces (service contracts) | Consumer-driven contract tests | **Pact**: consumers publish pacts, providers verify in CI, `can-i-deploy` gates release via a Pact Broker. |
+| Integrability (3e: Interoperability): Adapt / Limit dependencies (3e: Manage interfaces); Modifiability: Encapsulate (published API) | API/ABI compatibility | Kotlin **binary-compatibility-validator** (`apiDump`, `apiCheck`; KGP 2.2+ ships an experimental built-in ABI validation that is superseding it). Java **japicmp** (Maven plugin or CLI). TS **API Extractor** (`api-extractor run`; `--local` updates the report file). Protobuf **`buf breaking --against '.git#branch=main'`**. OpenAPI: a diff tool such as oasdiff in breaking-change mode, pinned. |
+| Integrability (3e: Interoperability): Adapt / Limit dependencies (3e: Manage interfaces) (service contracts) | Consumer-driven contract tests | **Pact**: consumers publish pacts, providers verify in CI, `can-i-deploy` gates release via a Pact Broker. |
 | Security: supply chain (no dedicated SAiP tactic; supports Resist attacks) | Vulnerability and licence scans | `osv-scanner` (v2 syntax `osv-scanner scan source -r .`; v1 was `osv-scanner -r .`), Dependabot or Renovate for update PRs, `cargo deny check`, GitLab dependency scanning. Fail on new high/critical only. |
 | Testability: measures the payoff of Control and observe system state, Limit complexity | Coverage floor on domain modules only | Kover or JaCoCo `jacocoTestCoverageVerification` scoped to `:core:domain`; `pytest --cov=acme.domain --cov-fail-under=90`; Jest `coverageThreshold` with a per-path key; Go: `go test -coverprofile` + a script. A global floor rewards testing getters; a floor on the money logic does not. |
 | Deployability: Manage deployed system; Availability: Prevent faults (zero-downtime deploys) | Migration backward-compatibility | Run the **previous** release's test suite (or smoke tests) against the **new** schema; enforce expand/contract (no drop/rename in the same release as the code change). |
@@ -482,9 +514,8 @@ people to ignore it; a fitness function that encodes a structure you have not re
 5. **Ratchet down.** Burn down the baseline with the refactoring the ADR proposes; delete the baseline entry when fixed
    so the baseline cannot silently re-absorb the violation. ArchUnit's freeze store drops violations that no longer
    occur on its own; commit the updated store. dependency-cruiser known violations: regenerate the baseline after a
-   fix and commit the smaller file. import-linter `ignore_imports`: prune entries by hand, and check whether the
-   installed version can report unmatched ignored imports (e.g. an `unmatched_ignore_imports_alerting` option) and set
-   it to error.
+   fix and commit the smaller file. import-linter `ignore_imports`: prune entries by hand; a stale entry already
+   fails the run because `unmatched_ignore_imports_alerting` defaults to `"error"` (section 2.4); do not lower it.
 6. **Harden.** When the baseline is empty, move the rule down the ladder if possible (e.g. into a module boundary).
 
 Suppressions carry a justification, an owner and a removal ticket in the same line or block, and are reviewed like
@@ -549,9 +580,9 @@ so violations show inline in the PR/MR. Mark the job as a required check once pa
 |---|---|---|---|---|---|---|---|
 | Layer direction | Modules; ArchUnit `layeredArchitecture` | Gradle modules; Konsist `assertArchitecture` | dependency-cruiser; eslint-plugin-boundaries; Nx tags | import-linter `layers` | `internal/`; go-arch-lint | Project refs; NetArchTest | Workspace crates |
 | Forbidden dependency (framework in domain) | ArchUnit `noClasses()...` | Konsist; detekt `ForbiddenImport` | dependency-cruiser `forbidden`; `no-restricted-imports` | import-linter `forbidden` | depguard; `go list` test | NetArchTest `HaveDependencyOn` | Crate deps; cargo-deny `bans` for third-party |
-| No cycles | ArchUnit `slices().beFreeOfCycles()` | Gradle modules (cycles rejected); Konsist | dependency-cruiser `circular`; madge | import-linter `layers`/`independence` (listed modules only); pydeps `--show-cycles` to detect; check whether the installed import-linter offers a dedicated cycle contract | Compiler | ArchUnitNET slices | Cargo |
+| No cycles | ArchUnit `slices().beFreeOfCycles()` | Gradle modules (cycles rejected); Konsist | dependency-cruiser `circular`; madge | import-linter `acyclic_siblings` (2.x; version-dependent); pydeps `--show-cycles` to detect | Compiler | ArchUnitNET slices | Cargo |
 | Feature independence | ArchUnit slices | Gradle `:feature` modules + edge check | Nx tags; boundaries | import-linter `independence` | go-arch-lint | NetArchTest / project refs | Crates |
-| Naming / placement | ArchUnit `classes()...` | Konsist declaration checks | eslint-plugin-boundaries / custom lint | Custom test | Custom `go/packages` test | NetArchTest | Clippy / custom |
+| Naming / placement; "only X may import Y" | ArchUnit `classes()...` | Konsist declaration checks | eslint-plugin-boundaries / custom lint | import-linter `protected` (only X may import Y); custom test for naming | Custom `go/packages` test | NetArchTest | Clippy / custom |
 | Public API stability | japicmp | binary-compatibility-validator / KGP ABI validation | API Extractor | Custom snapshot of `__all__` | `gorelease` / apidiff-style tooling, verify | Package validation / API compat tools, verify | `cargo-semver-checks` |
 | Performance budget | JMH + script; Gatling | Macrobenchmark | size-limit; k6 | pytest-benchmark; Locust | `go test -bench` + benchstat | BenchmarkDotNet + script | criterion + script |
 | Dependency policy | osv-scanner; Renovate | osv-scanner; Renovate | osv-scanner; npm audit; Renovate | osv-scanner; pip-audit | osv-scanner; govulncheck | osv-scanner; `dotnet list package --vulnerable` | cargo-deny; cargo-audit |

@@ -156,13 +156,14 @@ faults from becoming failures, or bound and repair the damage.
 | One slow dependency must not starve others | Bulkhead (separate bounded pool per dependency) | One shared pool |
 | A write may be retried by client or middleware | Idempotency key enforced by a unique constraint | Read-then-write duplicate check |
 | A state change must also emit an event | Transactional outbox | DB write then broker publish (R4) |
+| A side effect to an external system (email, webhook, payment) must not slow or fail the request and must survive restarts ("0 lost") | Persist intent (outbox or job row) in the request's transaction + an async worker with durable retry state ([architectural-patterns.md](architectural-patterns.md) §3.3 durable job queue) | In-process retry (tenacity, resilience4j) or FastAPI `BackgroundTasks`: their state dies with the process |
 
 ### (e) Code-level realization
 | Tactic | Idiom (examples across ecosystems) |
 |---|---|
 | Monitor, heartbeat, ping/echo | Health endpoint split into **liveness** (process alive; no dependency checks) and **readiness** (can serve; checks DB/queues). Wire to Kubernetes `livenessProbe` / `readinessProbe`. Spring Boot Actuator exposes liveness/readiness health groups; in Go/Node/Python write a small handler. Never put downstream checks in liveness: a DB blip then restarts every pod. |
 | Exception detection (timeout) | A deadline on **every** remote call. Go: `context.WithTimeout` and `http.Client{Timeout: ...}`. Kotlin: `withTimeout` works for suspending calls only (cancellation is cooperative, so a blocking JDBC call or OkHttp `execute()` inside it is not interrupted); also set client-level timeouts (Ktor `HttpTimeout` plugin, OkHttp `callTimeout`, JDBC `setQueryTimeout`). `withTimeout` throws `TimeoutCancellationException`, a subclass of `CancellationException`, so generic cancellation handling or `runCatching` can hide it: prefer `withTimeoutOrNull` or catch `TimeoutCancellationException` explicitly. JS: `AbortSignal.timeout(ms)` (version-dependent: Node 16.14+/17.3+ and current browsers); `fetch` has no overall timeout by default, and axios defaults to `timeout: 0` (none). Python: `httpx` timeouts (requests has no default timeout). Java: `HttpClient` request timeout, JDBC query timeout. |
-| Retry | Bounded attempts, exponential backoff **plus jitter**, only for idempotent or idempotency-keyed operations, only on transient errors. Examples: resilience4j `Retry` (JVM), Polly (.NET; v7 policies vs v8 resilience pipelines, version-dependent), tenacity (Python: `stop_after_attempt`, `wait_random_exponential`), p-retry (JS), a hand-rolled loop in Go. |
+| Retry | Bounded attempts, exponential backoff **plus jitter**, only for idempotent or idempotency-keyed operations, only on transient errors. Examples: resilience4j `Retry` (JVM), Polly (.NET; v7 policies vs v8 resilience pipelines, version-dependent), tenacity (Python: `stop_after_attempt`, `wait_random_exponential`), p-retry (JS), a hand-rolled loop in Go. These libraries keep retry state in memory: a restart loses it, so they cannot meet a "0 lost" measure alone. For durable retry (job rows): (1) give up by **age** (`created_at` older than the scenario's delivery deadline) rather than attempt count, then move to a dead state; (2) the backoff **cap** is a sensitivity point: a higher cap lowers probe load on a dead dependency but delays recovery after it returns; (3) the **lease** (visibility timeout) must exceed batch size x per-call timeout plus margin, or a second worker re-claims rows still being sent and duplicates them (20 sends x 10 s timeout needs well over 200 s, not 60 s); (4) **bound the exponent** (`min(attempt, 10)` before `2 ** n`) or the delay overflows (Python `timedelta` raises `OverflowError` after a few dozen attempts). |
 | Ignore faulty behaviour + graceful degradation | **Circuit breaker** pattern (resilience4j `CircuitBreaker`, Polly, `sony/gobreaker` in Go, opossum in Node) with a fallback: cached value, default, `PENDING` state, feature hidden. |
 | Graceful degradation (isolation) | **Bulkhead**: separate bounded pools per dependency. JVM: resilience4j `Bulkhead` or a dedicated bounded `ThreadPoolExecutor`. Kotlin: `Dispatchers.IO.limitedParallelism(n)` (version-dependent: experimental when introduced in kotlinx.coroutines 1.6). Go: buffered-channel semaphore or `golang.org/x/sync/semaphore`. Kotlin coroutines: a `SupervisorJob` (or `supervisorScope`) so one child's failure does not cancel its siblings; this isolates faults but restarts nothing. |
 | Transactions + retry safety | **Idempotency keys**: client sends a unique key per logical operation (e.g. an `Idempotency-Key` header); server stores key and result and replays the result on duplicates. Enforce with a unique constraint, not a read-then-write. |
@@ -177,6 +178,8 @@ faults from becoming failures, or bound and repair the damage.
 |---|---|---|
 | HTTP/gRPC/DB client created without a timeout or deadline | Exception detection (timeout) | R1 in [review-playbook.md](review-playbook.md) |
 | `catch (e: Exception) {}`, `except: pass`, `_ = err`, empty `.catch(() => {})` | Exception detection / handling | C3 |
+| The result of a send/HTTP/SDK call is only logged or ignored, or the library fails silently by default (python-emails SMTP backend `fail_silently=True`, fire-and-forget SDK calls, unchecked Go errors). During recon, check each client library's default error mode and default timeout | Exception detection | C3 (R1 when it is a remote call) |
+| Must-not-lose work handed to an in-memory mechanism (FastAPI `BackgroundTasks`, `asyncio.create_task`, an executor, `GlobalScope.launch`) | Transactions; durable retry | R4 (closest; name the lost-on-restart path) |
 | Retry loop without cap, backoff or jitter; retry on non-idempotent POST | Retry done wrong | R1 |
 | Synchronous chain of 3 or more remote hops on one request path | Degradation, reconfiguration; availability multiplies along the chain (§7) | R2 |
 | One shared thread/connection pool for all downstreams | Bulkhead (graceful degradation) | R1 (its fix names the bulkhead) |
@@ -262,6 +265,7 @@ Profile first: find whether the time goes to processing or to blocking (§2(a)) 
 | Limit event response + bound queue sizes | Bounded queues and channels (`ArrayBlockingQueue`, `Channel(capacity)`, buffered Go channel, `asyncio.Queue(maxsize=...)`) with explicit reject/drop; HTTP 429 or 503 with `Retry-After`; load shedding. Backpressure in streams (Reactive Streams, Kotlin `Flow` `buffer`/`conflate`). |
 | Prioritize events | Separate queues or topics per priority; priority executors; critical traffic on its own pool. |
 | Reduce computational overhead | Remove chatty call chains; batch endpoints; avoid per-row remote calls; binary protocols where measured to matter. |
+| Introduce concurrency (Python ASGI) | FastAPI/Starlette run sync `def` endpoints and dependencies in the AnyIO threadpool (default 40 tokens per process); `async def` endpoints run on the event loop and must not call blocking libraries (`requests`, sync SQLAlchemy, `smtplib`, `time.sleep`). Either keep blocking I/O in sync `def` handlers or use async clients, or offload with `anyio.to_thread.run_sync` / `run_in_threadpool`. |
 | Increase efficiency of resource usage | Fix N+1 queries (join/`IN` query, DataLoader batching, JPA fetch joins, Django `select_related`/`prefetch_related`); indexes; streaming instead of loading whole payloads. |
 | Bound execution times | Query timeouts, statement timeouts, per-request deadlines propagated (`context.Context`, gRPC deadlines). |
 | Introduce concurrency | Async IO and structured concurrency (coroutines, `async`/`await`, goroutines with `errgroup`); parallel fan-out with a concurrency cap. Keep IO off the UI/main thread. |
@@ -279,6 +283,8 @@ Profile first: find whether the time goes to processing or to blocking (§2(a)) 
 | No rate limit on public endpoints | Manage work requests | R6 |
 | Cache with no TTL, eviction or invalidation rule | Multiple copies of data (misapplied) | R5 |
 | Remote call without deadline | Bound execution times | R1 |
+| `async def` handler calling blocking I/O; sync `def` handlers doing slow I/O beyond the 40-token threadpool | Introduce concurrency | R3 |
+| DB pool size x worker processes x replicas above the server's `max_connections` (SQLAlchemy `create_engine` defaults: `pool_size=5`, `max_overflow=10`, `pool_timeout=30`) | Bound queue sizes; schedule resources | R5 |
 
 - **(g) Measurement.** Measure percentiles (p50, p95, p99, p99.9), never averages alone. Fitness functions: load test in CI or
   nightly (k6, Gatling, Locust, JMeter) asserting a percentile threshold at a stated arrival rate; query-count assertions in
@@ -383,6 +389,10 @@ parties. Core properties: **confidentiality**, **integrity**, **availability** (
 | `verify=False` (requests/httpx), `InsecureSkipVerify: true` (Go `tls.Config`), trust-all `X509TrustManager` or `HostnameVerifier` returning `true` (JVM/Android), `rejectUnauthorized: false` or `NODE_TLS_REJECT_UNAUTHORIZED=0` (Node) | Encrypt data | C9 |
 | JWT decoded without signature or audience check: PyJWT `options={"verify_signature": False}`, `jwt.decode` in jsonwebtoken where `jwt.verify` is needed, `alg: none` accepted | Authenticate actors | C9 |
 | Security-relevant actions not logged, or logs contain tokens and PII | Audit | C4 (closest; name it an audit gap in the finding) |
+| Long-lived access tokens with no revocation check; reusable reset tokens; tokens in `localStorage` | Revoke access | C12 |
+| Different status, body or timing for existing vs unknown accounts on login/recovery/signup | Limit exposure | C13 |
+| `anyHost()`/reflected origin with credentials; forwarded headers trusted without a proxy | Limit access | C11 |
+| Queue, outbox or job payloads holding secrets (passwords, reset tokens, API keys) or unbounded PII: making a side effect durable persists what used to be transient, into the DB and its backups | Limit exposure; encrypt data | C2 (closest). Store references and mint secrets at execution time; add a retention/purge job |
 
 - **(g) Measurement.** Fitness functions: authz tests per endpoint (every route has a test asserting 401/403 for the wrong actor);
   dependency and secret scanning in CI; DAST against a staging deployment; an architecture test asserting that all controllers go

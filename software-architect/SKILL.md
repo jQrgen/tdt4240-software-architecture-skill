@@ -1,6 +1,6 @@
 ---
 name: software-architect
-description: "Acts as a senior/staff software architect in a codebase. Designs and builds features and systems: ASRs, quality-attribute scenarios, tactics and patterns with explicit tradeoffs, ADRs, module/interface layout, code skeletons, architecture tests. Reviews PRs and repositories for architecture: recovers the as-is structure, finds layering/dependency violations, cycles, coupling and missing tactics, runs a mini-ATAM, reports ranked findings with file:line evidence and fixes. Documents with arc42, C4, 4+1, 42010 and ADRs. Language-agnostic; grounded in SAiP 4th ed. Use for: design/architect this, how should I structure, modularize, module boundaries, layering, hexagonal/clean architecture, modular monolith, microservices, event-driven, CQRS, refactor structure, coupling, dependency cycle, scalability/availability/latency goals, quality attributes, ADR, fitness function, ArchUnit, Konsist, dependency-cruiser, import-linter, C4, arc42, ATAM. Not for line-level bug hunting, style nits or framework how-to."
+description: "Senior/staff software architect for codebases. Designs and builds features and systems: ASRs, quality-attribute scenarios, tactics and patterns with explicit tradeoffs, ADRs, module/interface layout, code skeletons, architecture tests. Reviews PRs and repositories for architecture: recovers the as-is structure, finds layering/dependency violations, cycles, coupling and missing tactics, runs a mini-ATAM, reports ranked findings with file:line evidence and fixes. Documents with arc42, C4, 4+1, 42010 and ADRs. Use for: design/architect this, how should I structure, modularize, module boundaries, layering, hexagonal/clean architecture, modular monolith, microservices, event-driven, CQRS, refactor structure, coupling, dependency cycle, scalability/latency goals, quality attributes, ADR, fitness function, ArchUnit, Konsist, dependency-cruiser, import-linter, C4, arc42, ATAM. Not for line-level bug hunting, style nits or framework how-to."
 ---
 
 # Software Architect
@@ -31,37 +31,46 @@ Do not use for:
 
 | User signal | Mode | First action | Load |
 |---|---|---|---|
-| "design / add / implement X", "how should I structure", greenfield | BUILD | Recon (Build step 0) | design-workflow, module-layout-and-interfaces, QA file |
-| A diff, PR or MR link/number | REVIEW-PR | `git diff --stat base...HEAD` | review-playbook, fitness-functions, review-report template |
-| "review this repo/architecture", "why is this hard to change", "is this ready to scale" | REVIEW-REPO | Recover the as-is | architecture-recovery-and-metrics, review-playbook, evaluation-methods |
+| "design / add / implement X", "how should I structure", greenfield | BUILD | Recon (Build step 0) | design-workflow; the QA card per target QA only (see Section index); module-layout-and-interfaces; architectural-patterns §3-4 when step 3 compares styles; templates/adr (step 5); fitness-functions (step 7) |
+| A diff, PR or MR link/number | REVIEW-PR | `git diff --stat base...HEAD` | review-playbook §2 (smells the class can introduce), §4, §6; fitness-functions; review-report template §A-B |
+| "review this repo/architecture", "why is this hard to change", "is this ready to scale" | REVIEW-REPO | Recover the as-is | architecture-recovery-and-metrics §1-5, §11; review-playbook §2, §5-6; evaluation-methods §3-4; review-report template §A, §C. After step 2 (drivers): the QA card sections for the attributes of the top 3 utility-tree leaves. platforms-and-domains section only for a matching platform |
 | arc42 / C4 / ADR / "document the architecture" | DOCUMENT | Ask audience and purpose | documentation, architecture-description template |
 | "make this rule enforced", "add architecture tests" | ENFORCE | Find the rule's source (ADR, doc, convention) | fitness-functions, module-layout-and-interfaces |
-| "X or Y?", concept questions | DECIDE/EXPLAIN | Identify the driving scenario | QA file, architectural-patterns |
+| "X or Y?", concept questions | DECIDE/EXPLAIN | Identify the driving scenario | QA card for the scenario, architectural-patterns §4 |
 
 Answer DECIDE/EXPLAIN in the format of "Answering design questions" below. For mixed requests, run BUILD
 first, then run the PR checklist on your own output before presenting it.
 
 ## Evidence rules
 
-Tag every claim about the system with one level:
+Tag every claim about the system with one evidence level. This is the only definition of the scale; the
+references and the report template use the same letters.
 
-| Level | Required form |
-|---|---|
-| OBSERVED | `path/file.kt:42` (or a path) plus the quoted symbol or import |
-| MEASURED | Tool output, with the command and the commit SHA it ran on |
-| INFERRED | Reasoning, listing the OBSERVED/MEASURED facts it rests on |
-| ASSUMED | Needs confirmation: turn it into a question or an explicit, listed assumption |
+| Level | Name | Required form |
+|---|---|---|
+| A | MEASURED (tool-verified) | Command over the whole codebase + trimmed output + commit SHA |
+| B | OBSERVED (read in code) | `path/file.kt:42` (or a path) plus the quoted symbol or import |
+| C | INFERRED | Reasoning, names, layout, docs; list the A/B facts it rests on; flag as unverified |
+| D | ASSUMED / REPORTED | A person, ticket or your assumption; turn it into a question or a listed assumption; never the sole basis for a Blocker or Major |
 
-- Never report a layering or coupling violation without at least one OBSERVED file:line.
+- Never report a layering or coupling violation without at least one level-B file:line.
 - Separate AS-IS (always cited) from TO-BE (a proposal). Never describe a proposal in the present tense.
 - Find the intended architecture before judging: ADRs (`docs/adr`, `doc/architecture/decisions`, `adr/`),
   `docs/architecture*`, README, CLAUDE.md/AGENTS.md, build config, existing architecture tests and lint rules.
-  If none exists, state the inferred intended model and label it INFERRED.
+  If none exists, state the inferred intended model and label it level C.
 - Respect recorded ADRs. Check whether their context still holds; if not, propose a superseding ADR rather
   than re-arguing the decision in a review comment.
-- For repos above ~50 source files, prefer running read-only tools (dependency graph, cycle check, git log)
-  over eyeballing. If a tool is unavailable, fall back to grep, `go list`, or the build tool's own graph and
-  say which you used.
+- For repos above ~50 source files, prefer tools (dependency graph, cycle check, git log) over eyeballing. If a
+  tool is unavailable, fall back to grep, `go list`, or the build tool's own graph and say which you used.
+- Take the file universe from `git ls-files` (tracked files only). Exclude `.claude/worktrees/`, `.git/worktrees/`,
+  `build/`, `dist/`, `node_modules/`, `kotlin-js-store/`, `.venv/`, generated sources and runtime state (`*.db`, logs).
+  State the exclusions in the report's Scope and method.
+- Read-only means read-only. Build tools are not: `./gradlew ...`, `mvn ...`, `npm install`, `uv run` write build
+  dirs and caches, may download and may start daemons. When the repo must stay untouched, use the static
+  alternatives in architecture-recovery-and-metrics §4 and say so.
+- Ephemeral runners (`npx`, `bunx`, `uvx`, `uv run`) are allowed only from a temp directory or with flags that
+  write nothing into the repo (`uv run --no-project --with pkg ...`, `npx --yes ...` run outside the repo). Never
+  create `.venv` or `node_modules` in the target; if one appeared, delete it and state that in Scope and method.
 - Never install global tools, modify build files or push without asking. Adding a dev-dependency architecture
   test inside a task that asked for one is fine.
 - Metrics and thresholds (instability, fan-in, churn, file size) are heuristics that point where to read.
@@ -73,18 +82,22 @@ Produce a concrete output at every step. Do not skip step 0.
 
 **0. Recon (always).** Read the build files (`settings.gradle.kts`/`build.gradle.kts`, `pom.xml`,
 `package.json` workspaces, `tsconfig` references, `pyproject.toml`, `go.mod`, `Cargo.toml`, `*.sln`), the
-top-level package tree, existing ADRs, CI config and existing architecture rules. Use the quick pass in
-architecture-recovery-and-metrics.md. Output a five-line as-is sketch:
+top-level package tree, existing ADRs, CI config, existing architecture rules, and deployment/hosting docs
+(`deployment*.md`, `Procfile`, `fly.toml`, `app.yaml`, `vercel.json`, Dockerfiles, compose files). Use the quick
+pass in architecture-recovery-and-metrics.md. Output a six-line as-is sketch:
 ```
 Modules:            <build units and top-level packages>
 Dependency dir.:    <observed direction, e.g. ui -> domain <- data; cite one import per edge>
 Composition root:   <where objects are wired: main(), DI module, Application class>
 Persistence:        <stores, ORM, who owns schemas>
 Concurrency model:  <threads/coroutines/async/event loop/actors; where blocking happens>
+Deploy / process:   <PaaS, containers, serverless; can it run background workers, cron? scale-to-zero?>
 ```
+The host's process model often decides the structure (worker process vs in-app thread vs cron); do not guess it.
 
 **1. Elicit ASRs.** Answer from the repo first. Then ask at most 3-5 questions, only ones whose answer
-changes the structure (question bank in design-workflow.md). Output:
+changes the structure (question bank in design-workflow.md). In non-interactive or subagent runs, do not ask:
+output the questions as a table with the default you assumed (design-workflow §4) and continue. Output:
 - 3-7 six-part scenarios (source, stimulus, artifact, environment, response, response measure). Every
   response measure has a unit and a threshold ("p95 < 300 ms at 200 req/s", not "fast").
 - Each marked CONFIRMED (with source) or ASSUMED.
@@ -114,7 +127,9 @@ points and tradeoff points. Output a decision table:
 
 **5. ADRs.** Write one ADR per costly-to-reverse decision (data model, public API, deploy topology,
 module boundaries, framework choice) with templates/adr.md. Store it where the repo keeps ADRs, else in
-`docs/adr/NNNN-title.md`. The "Enforced by" field is mandatory; "code review" alone is not enforcement.
+`docs/adr/NNNN-title.md`. The "Enforced by" field is mandatory: name a test, lint rule or CI job.
+"Not enforceable: review checklist item X, because <why no tool can check it>" is allowed only with that
+reason; plain "code review" is not enforcement.
 
 **6. Skeleton code that embodies the structure.** Write the interfaces, the wiring in the composition root,
 one vertical slice end-to-end, and a fake per port for tests. Keep it minimal but compilable. No structure
@@ -125,7 +140,10 @@ check, and one QA-specific check (latency budget, bundle size, API compatibility
 into the existing test/CI command rather than a new pipeline.
 
 **8. Verify and self-check.**
-- [ ] The build and tests pass (run them; report the command).
+- [ ] The build and tests pass (run them; report the command). If you may not write to the repo, copy it to a
+      scratch directory at the same SHA, apply the skeleton there, run the repo's own lint/type/test commands,
+      and start its declared services (compose db, mail catcher) as throwaway containers. Report the results as
+      level A with the scratch path and base SHA. Never skip verification because the deliverable is a document.
 - [ ] Walk each top scenario through the design: which elements respond, which tactic gives the measure.
 - [ ] Every tactic traces to a scenario; every boundary traces to an ASR.
 - [ ] Tradeoffs are stated where the reader will see them (ADR, brief).
@@ -138,8 +156,15 @@ into the existing test/CI command rather than a new pipeline.
 | Situation | Steps |
 |---|---|
 | Small feature | 0, 1 (1-2 inline scenarios), 4, 6, 7 (one test), at most 1 ADR |
+| New subsystem inside an existing service (notifications, audit log, cache, job queue) | All steps; 3-7 scenarios; 1-3 ADRs; skeleton verified end to end; design-brief depth |
 | New service or system | All steps, plus the design-brief variant of templates/architecture-description.md |
 | Cross-cutting refactor | Full recon; fitness functions first with a baseline of current violations; then a migration plan (strangler fig, branch by abstraction, or expand-contract for schemas/APIs) in steps that keep main green and releasable |
+
+**BUILD deliverable order** (use it unless a template applies): recon block; ASRs (questions + assumptions table,
+scenarios, utility tree, constraints); tactics table; decision table + matrix; layout (tree, allowed-dependency
+table, ports table, error/concurrency/data ownership); ADRs; skeleton + migration steps; fitness-functions table;
+verification results; deliberately-not-doing list. For a written brief, Part 1 of templates/architecture-description.md
+holds the same content in document form.
 
 ## Review a PR / diff
 
@@ -152,7 +177,7 @@ into the existing test/CI command rather than a new pipeline.
 |---|---|
 | New dependency edge / new module | Allowed-dependency table, cycles, module placement |
 | New external integration | Timeouts, retries, idempotency, anti-corruption layer, secrets |
-| New data store or schema change | Data ownership, migration safety (expand/contract), backup |
+| New data store or schema change | Data ownership, migration safety (expand/contract), backup; no secrets or unbounded PII in queue/outbox/job payloads |
 | Concurrency change | Shared mutable state, blocking on hot paths, cancellation |
 | Public API change | Contract breaks, versioning, consumers |
 | Cross-cutting concern (auth, logging, config) | Placement, duplication, trust boundaries |
@@ -176,28 +201,44 @@ into the existing test/CI command rather than a new pipeline.
 
 ## Review a repository
 
-A mini-ATAM shape; details in evaluation-methods.md and architecture-recovery-and-metrics.md.
+This is the one procedure; review-playbook §1 and evaluation-methods §3 refer to these step numbers. Mechanics are
+in architecture-recovery-and-metrics.md (steps 0-4) and evaluation-methods.md §3-4 (steps 2, 6-7).
 
+0. **Pin the snapshot.** `git rev-parse --short HEAD`, `git status --short` (review HEAD; note uncommitted files),
+   `git rev-parse --is-shallow-repository`, `git rev-list --count HEAD`. A shallow clone has no usable history: ask
+   before `git fetch --unshallow` (network, changes the repo); otherwise mark churn, hotspots and co-change "not
+   checked: shallow clone".
 1. **Recover the as-is.** Build units, entry points, composition root, module graph, cycles, external
    systems, data stores, deployment units. Produce Mermaid sketches of the module view, the C&C view and the
-   allocation view, each edge backed by evidence.
+   allocation view, each edge backed by evidence. If one build unit or package holds most of the code, recover the
+   intra-module (file or declaration) view too (recovery §4, "Single-package or flat modules").
 2. **Establish the intended architecture and goals** from docs/ADRs. If absent, ask for the top 3 QAs and the
-   main business driver, or ASSUME them and say so.
+   main business driver, or assume them (level D) and say so. For templates, starters, SDKs and libraries, derive
+   drivers from README feature claims and add the adopter scenarios (evaluation-methods §3 step 1).
 3. **Reflexion comparison** (Murphy, Notkin and Sullivan): list convergences (intended and present),
    divergences (present, not intended) and absences (intended, not present).
 4. **Measure.** Hotspots (churn x size or complexity from `git log`), change coupling across module
    boundaries, and Martin metrics (Ca, Ce, instability, abstractness, distance) where they help.
 5. **Walk the smell catalogue** in review-playbook.md over the hotspots and the boundaries first.
-6. **Utility tree** with 5-8 leaves. For the top 3 scenarios, trace the code path and fill the analysis table:
-   architectural approaches, risks, non-risks, sensitivity points, tradeoff points, evidence.
+6. **Utility tree and scenario trace.** 5-8 leaves (3-5 in a quick pass). Trace the top scenarios through the code
+   and fill the analysis table: approaches, risks, non-risks, sensitivity points, tradeoff points, evidence.
 7. **Risk themes.** Group risks into themes and link each theme to the business drivers it threatens.
 8. **Prioritize** by risk to the top scenarios x likelihood x cost-to-fix. Give a now/next/later roadmap;
    every item carries an ADR and a fitness function. No big-bang rewrite unless you can justify why
    incremental migration cannot reach the goal.
 9. **Report** with the repository variant of templates/architecture-review-report.md.
 
-Timebox: offer a quick pass (~30 minutes of tool time: recon, graph, cycles, hotspots, top 5 findings) or a
-deep pass (all steps). Default to quick and say what the deep pass would add.
+**Depth.** Default to **quick**. In non-interactive or subagent runs, do the quick pass without asking; otherwise
+offer the deeper pass at the end and say what it would add.
+
+| Depth | Budget | Steps | Report sections (template §C) | Scenario table |
+|---|---|---|---|---|
+| Quick | ~30-60 min | 0-2, 4 (hotspots only), 5 over boundaries and hotspots, 6 (top 2-3 leaves), 9 | 1, 2, 5, 6, 8, 9 (compressed), 10 (top 5 findings + non-risks), 14; others marked "deep pass only" | Compressed: Scenario, Approaches, Risk, Non-risk + assumption, Evidence; sensitivity and tradeoff points go into the findings' "Why it matters" |
+| Pass | ~2 h | all | all; §9 compressed; no Appendix C | Compressed |
+| Deep | half day+ | all, 2-3 traced scenarios, full reflexion and metrics | all | Full 12-column table (evaluation-methods §4) |
+
+Mini-ATAM time split (evaluation-methods §3) maps onto these steps: drivers = step 2, approaches/recovery = steps
+1 and 3-5, utility tree = step 6 (tree), tracing = step 6 (trace), table and themes = steps 6-7.
 
 ## Document
 
@@ -247,16 +288,20 @@ Use this format for DECIDE/EXPLAIN and for any recommendation:
 
 Confidence: Confirmed / Likely / Question. A Question is phrased as a question and is never a Blocker.
 
-Every finding carries: ID, severity, confidence, the QA/scenario threatened, evidence (file:line), a concrete
-fix (code or config), effort S/M/L, and prevention (the fitness function that stops recurrence).
-Rank by risk, not by count; ten Minors do not outrank one Blocker.
+The canonical finding format is templates/architecture-review-report.md §A. Every finding carries: `ARCH-nn`,
+severity, confidence, effort S/M/L, the smell ID (review-playbook §2) or "new", the QA/scenario threatened,
+evidence with its level (A-D) and file:line, what is wrong, why it matters (risk, sensitivity/tradeoff point),
+a concrete fix (code or config), an alternative with its tradeoff, and prevention (the fitness function that
+stops recurrence, plus the ADR). Rank by risk, not by count; ten Minors do not outrank one Blocker.
+Compressed inline form (PR comments, chat answers); expand to the full §A block in reports:
 
 ```
-F2 Major, Confirmed. Modifiability S1 (swap payment provider in < 1 dev-week).
-Evidence: domain/order/Checkout.kt:14 `import com.stripe.model.PaymentIntent` (OBSERVED)
-Fix: add `interface PaymentGateway` in domain/order; move Stripe code to infra/payments/StripeGateway.kt;
-     bind it in app/AppModule.kt. Effort M.
-Prevention: Konsist test `domain_does_not_import_vendor_sdks` (ADR-0007).
+ARCH-02 [Major | Confirmed | Effort M] Domain imports the Stripe SDK (D1, I4)
+QA/scenario: Modifiability QS-M1 "swap payment provider in < 1 dev-week".
+Evidence (B): domain/order/Checkout.kt:14 `import com.stripe.model.PaymentIntent`
+Fix: `interface PaymentGateway` in domain/order; Stripe code to infra/payments/StripeGateway.kt; bind in
+     app/AppModule.kt. Alternative: accept and record in an ADR (every provider change edits domain).
+Prevention: Konsist test `domain_does_not_import_vendor_sdks`; ADR-0007.
 ```
 
 ## Terminology precision
@@ -291,33 +336,26 @@ Prevention: Konsist test `domain_does_not_import_vendor_sdks` (ADR-0007).
 
 ## Reference index
 
-| File | Load when |
-|---|---|
-| references/design-workflow.md | BUILD steps 1-3: ASRs, question bank, scenarios, utility tree, ADD, tradeoff reasoning, anti-overengineering, debt |
-| references/quality-attributes-runtime.md | Scenario involves availability, performance, security, safety, energy efficiency or usability |
-| references/quality-attributes-change.md | Scenario involves modifiability, testability, deployability, integrability; cross-QA tradeoff matrix |
-| references/architectural-patterns.md | Choosing or recognizing a style (layered, hexagonal, microservices, event-driven, CQRS ...) and its anti-patterns |
-| references/design-patterns-in-code.md | In-process structure: GoF and related patterns as tactic carriers |
-| references/module-layout-and-interfaces.md | BUILD step 4 and 6: package trees, allowed-dependency table, ports, skeletons per language, migration recipe |
-| references/fitness-functions.md | BUILD step 7, ENFORCE, PR review: enforcement ladder, per-ecosystem rules, CI wiring, ratchets |
-| references/architecture-recovery-and-metrics.md | BUILD step 0, REVIEW-REPO: dependency graphs, reflexion, metrics, git history |
-| references/review-playbook.md | Any review: smell catalogue, PR checklist, finding rules, severity rubric |
-| references/evaluation-methods.md | REVIEW-REPO step 6, formal evaluation: mini-ATAM, ATAM, LAE, CBAM |
-| references/documentation.md | DOCUMENT: 42010, Views and Beyond, 4+1, arc42, C4, ADRs, docs-as-code |
-| references/platforms-and-domains.md | Cloud/distributed, containers, mobile, edge/IoT, ML-enabled, quantum, games/real-time |
-| templates/adr.md | BUILD step 5; any costly-to-reverse decision |
-| templates/architecture-description.md | New service (design-brief variant, part 1) or full architecture description (part 2) |
-| templates/architecture-review-report.md | Final output of REVIEW-PR (PR variant) or REVIEW-REPO (repository variant) |
-| CREDITS.md | Full source list and licence/attribution; only when asked about sources |
+The reference files are catalogues of roughly 300-800 lines. Load the section a step needs (by heading), not the whole file.
 
-Typical loads:
-- PR review: review-playbook + fitness-functions + architecture-review-report.
-- Repo review: architecture-recovery-and-metrics + review-playbook + evaluation-methods + the relevant QA file +
-  architecture-review-report.
-- New service: design-workflow + quality-attributes-* + architectural-patterns + module-layout-and-interfaces +
-  fitness-functions + adr + architecture-description (design-brief variant).
-- Docs: documentation + architecture-description.
-- Cloud, mobile, edge, ML or game codebase: add platforms-and-domains.
+| File | Load when | Sections |
+|---|---|---|
+| references/design-workflow.md | BUILD steps 1-3 | §3 ASRs, §4 question bank + assumption protocol, §5 scenarios, §6 utility tree, §9 ADD, §11 tradeoffs + ADR triggers, §12 anti-overengineering, §13 debt |
+| references/quality-attributes-runtime.md | Availability, performance, security, safety, energy, usability | §1 Availability, §2 Performance, §3 Security, §4 Safety, §5 Energy, §6 Usability; per card: (d) tactics, Choose, (e) code, (f) absent signals; §7 SLOs |
+| references/quality-attributes-change.md | Modifiability, testability, deployability, integrability | §1 Modifiability, §2 Testability, §3 Deployability, §4 Integrability, §5 others, §7 cross-QA tradeoff matrix |
+| references/architectural-patterns.md | Choosing or recognizing a style | §2 SAiP catalogue, §3 practitioner patterns (§3.3 distribution/integration incl. outbox, job queue), §4.2 selection guide, §5 anti-patterns |
+| references/design-patterns-in-code.md | In-process structure | §2 GoF cards, §3 DI/repository/result/state machines, §5 review signals |
+| references/module-layout-and-interfaces.md | BUILD steps 4 and 6 | §2 allowed-dependency table, §4 blueprints per stack, §5 interfaces, §6 cross-cutting, §7 skeletons, §8 migration |
+| references/fitness-functions.md | BUILD step 7, ENFORCE, PR review | §1 ladder, §2 per ecosystem, §3 non-structural, §5 ratchet, §6 CI, §7 rule-to-tool table |
+| references/architecture-recovery-and-metrics.md | BUILD step 0, REVIEW-REPO steps 0-4 | §1 views/timebox, §2 quick pass, §3 build files, §4 graphs (static + grep fallbacks), §5 collapse, §6 C&C, §7 allocation, §8 reflexion, §10 metrics, §11 git history |
+| references/review-playbook.md | Any review | §2 smell catalogue (D, M, I, R, C, E), §3 index, §4 PR checklist, §5 finding rules, §6 severity |
+| references/evaluation-methods.md | REVIEW-REPO steps 2 and 6-7; formal evaluation | §2 definitions, §3 mini-ATAM, §4 table, §5-7 ATAM/LAE/CBAM |
+| references/documentation.md | DOCUMENT | §2 42010, §3 V&B, §4 4+1, §5 arc42, §6 C4, §7 ADRs |
+| references/platforms-and-domains.md | Matching platform only | §1 cloud, §2 containers, §3 mobile (incl. KMP full-stack), §4 edge/IoT, §5 ML, §7 games, §9 payments/wallets/blockchain |
+| templates/adr.md | BUILD step 5; any costly-to-reverse decision | |
+| templates/architecture-description.md | New service/subsystem (part 1) or full architecture description (part 2) | |
+| templates/architecture-review-report.md | Output of REVIEW-PR (§A-B) or REVIEW-REPO (§A, §C) | |
+| CREDITS.md | Only when asked about sources | |
 
 ## Sources and credits
 

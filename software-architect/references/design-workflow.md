@@ -108,6 +108,26 @@ Use these one-liners to justify architectural work (ADR, refactor, fitness funct
 12. It restricts the vocabulary of design alternatives, which reduces accidental complexity.
 13. It is the natural starting point for onboarding.
 
+### Contexts and the architecture influence cycle (SAiP 3rd ed. ch. 3; spread over 4th ed. ch. 1-2, 24-25)
+
+Architecture lives in four contexts. Use each one as a question during the ASR hunt (section 3), before
+reading only the code:
+
+| Context | Question it answers for the ASR hunt | Where to look |
+|---|---|---|
+| Technical | Which quality attributes must the structure deliver, on which platform and technology constraints? | Runtime/infra config, SLOs, framework and platform choices, integration points |
+| Project life cycle | How is the system built, delivered and evolved (iterative, release cadence, who deploys)? | CI/CD pipelines, branching model, release notes, deployment manifests |
+| Business | Which business goals, market, cost or time-to-market pressures and org structure drive it? | README, product docs, team/ownership files (CODEOWNERS), the user |
+| Professional | What skills, experience and preferences does the architect/team bring, and what do they lack? | Team size and stack history, existing conventions, the user |
+
+**Architecture influence cycle.** Business goals, the technical environment and the architect's (and team's)
+experience shape the architecture; the built system then feeds back into all three: it changes what the
+business can offer next, becomes part of the technical environment for later systems, and changes what the
+architect and organisation know and prefer. Use this to justify asking about organisation and business
+drivers in step 1 of the design procedure: a structure that fits the code but not the business goals or
+the team that must run it is a wrong structure, and the chosen structure will constrain that business and
+team afterwards.
+
 ---
 
 ## 3. Architecturally significant requirements (SAiP ch. 19)
@@ -165,7 +185,15 @@ rewrite it as the measurable outcome it was meant to achieve, unless it is a gen
    Record each answer found as `CONFIRMED (source: <file path>)`.
 1. Ask the user **at most 3-5 questions**: the highest-impact ones the repo could not answer, i.e. those whose
    answers would change the design. Everything else becomes a flagged assumption.
-2. If no user is available (non-interactive or subagent run), do not ask; apply the assumption protocol below.
+2. If no user is available (non-interactive or subagent run), do not ask; apply the assumption protocol below,
+   and still output the 3-5 questions so a human can answer them later:
+
+   | ID | Question | Why it changes the structure | Default assumed |
+   |---|---|---|---|
+   | Q1 | Can the host run a non-HTTP always-on process? | Decides worker process vs in-app thread vs cron | ASSUMED: no; in-app worker started in lifespan |
+
+   Reference the question IDs from the scenarios and ADRs that depend on them ("QS-A1 (depends on Q1)"), so a
+   changed answer shows exactly what to revisit.
 
 | QA | Questions that change the design |
 |---|---|
@@ -174,7 +202,7 @@ rewrite it as the measurable outcome it was meant to achieve, unless it is a gen
 | Modifiability | What is the most likely change in the next 12 months? Which parts change weekly vs yearly? |
 | Integrability | Who integrates with us, and who do we integrate with? Do we control their release cadence? Versioning expectations? |
 | Security | Who are the threat actors (anonymous internet, malicious tenant, insider, compromised device)? What data is sensitive? Compliance regime? |
-| Deployability | Deploy cadence? Zero-downtime required? Rollback time? Mobile store or OTA constraints? |
+| Deployability | Deploy cadence? Zero-downtime required? Rollback time? Mobile store or OTA constraints? Can the host run a non-HTTP always-on process (worker), cron, or does it scale to zero? (Read `deployment*.md`, `Procfile`, `fly.toml`, `app.yaml`, `vercel.json` first.) |
 | Energy / mobile / IoT | Target devices, battery or power budget, connectivity profile (offline, metered, flaky)? |
 | Safety | Can an output harm people, property or money irreversibly? What is the safe state? |
 | Testability | Can production-like dependencies run in CI? What must be deterministic? |
@@ -458,10 +486,9 @@ Matrix rules:
 
 ### When an ADR is warranted
 
-Write one when any of these hold: the decision is a one-way door; it affects more than one team or deployable;
-it answers an (H,H) scenario; it introduces or removes a dependency with high lock-in; it knowingly accepts
-debt or violates a stated rule; or reviewers are likely to ask "why not X?" later. Do not write ADRs for
-reversible, local choices (naming, a private helper library).
+Use the single trigger list in [documentation.md](documentation.md) §7 ("Is it ADR-worthy?"): one-way doors,
+structure changes, QA tradeoffs, new external systems, cross-cutting conventions, multi-team impact, (H,H)
+scenarios and accepted debt. Do not write ADRs for reversible, local choices (naming, a private helper library).
 
 ---
 

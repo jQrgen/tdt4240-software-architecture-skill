@@ -1,8 +1,9 @@
 # Template: architecture review report (PR and repository variants)
 
 *Use the PR variant (§B) for a single change and the repository variant (§C) for a whole codebase. Both use the finding
-block in §A. Replace every `<placeholder>`; write "not checked" instead of leaving a field blank. Procedure and smell IDs:
-[../references/review-playbook.md](../references/review-playbook.md). Recovery, evidence levels and metrics:
+block in §A, which is the canonical finding format (SKILL.md shows only its compressed inline form). Replace every
+`<placeholder>`; write "not checked" instead of leaving a field blank. Procedure and depth: [../SKILL.md](../SKILL.md).
+Smell IDs: [../references/review-playbook.md](../references/review-playbook.md). Recovery and metrics:
 [../references/architecture-recovery-and-metrics.md](../references/architecture-recovery-and-metrics.md). Scenario
 analysis and ATAM: [../references/evaluation-methods.md](../references/evaluation-methods.md). Preventive checks:
 [../references/fitness-functions.md](../references/fitness-functions.md). ADRs: [adr.md](adr.md).*
@@ -12,11 +13,12 @@ analysis and ATAM: [../references/evaluation-methods.md](../references/evaluatio
 ## A. Finding block (shared)
 
 *Severity: Blocker (must not merge/ship), Major, Minor, Nit. Confidence: Confirmed, Likely, Question (a Question is phrased
-as a question and is never a Blocker). Evidence level: A tool-verified, B read in code, C inferred, D reported.*
+as a question and is never a Blocker). Evidence level (defined in SKILL.md "Evidence rules"): A measured (tool-verified),
+B observed (read in code), C inferred, D assumed/reported.*
 
 ````markdown
 ### ARCH-<nn> [<Blocker|Major|Minor|Nit> | <Confirmed|Likely|Question> | Effort <S|M|L>] <title: the problem, not the fix> (<smell ID from review-playbook §2, e.g. R5, or "new">)
-- **Quality attribute / scenario:** <QA> · <scenario ID from the utility tree or PR, e.g. A2 "provider outage">
+- **Quality attribute / scenario:** <QA> · <scenario ID from the utility tree or PR, e.g. QS-A2 "provider outage">
 - **Evidence (level <A|B|C|D>):** `<path/File.ext:line-line>`, `<path:line>` (+ <N> similar sites)
   ```<lang>
   <<= 5 lines of code, or the command and a trimmed output excerpt>
@@ -27,15 +29,16 @@ as a question and is never a Blocker). Evidence level: A tool-verified, B read i
 - **Proposed fix:** <numbered steps> + <code, config or rule sketch>
 - **Alternative:** <other fix, or "accept the risk"> — tradeoff: <what it costs>
 - **Prevention:** <fitness function: tool + rule> · <ADR to write or update>
+- **Theme:** <RT-n from §11; repository reviews only>
 ````
 
 *One short example per severity (compress, but keep every field when writing real findings):*
 
 **ARCH-01 [Blocker | Confirmed | Effort S] Refund endpoint has no server-side authorization (C1)**
-- QA / scenario: Security · S1 "authenticated user tries to refund another user's order".
+- QA / scenario: Security · QS-S1 "authenticated user tries to refund another user's order".
 - Evidence (B): `api/src/services/refundService.ts:30-41` — `refund(orderId)` loads the order and refunds it with no
   ownership check; the only caller, `api/src/routes/refunds.ts:14-22`, passes `req.params.orderId` and no user.
-- What is wrong: any logged-in user can refund any order. Why it matters: risk against S1; money loss and data integrity.
+- What is wrong: any logged-in user can refund any order. Why it matters: risk against QS-S1; money loss and data integrity.
 - Fix: change the signature to `refundService.refund(orderId, user)` and call `assertOwner(order, user)` (throws
   `ForbiddenError`, mapped to 403) inside the service; add a service test for the non-owner case. Alternative: enforce at
   the gateway — tradeoff: policy lives outside the code and is invisible to reviewers. Prevention: ADR "authorization
@@ -43,12 +46,12 @@ as a question and is never a Blocker). Evidence level: A tool-verified, B read i
   `ForbiddenError`.
 
 **ARCH-02 [Major | Confirmed | Effort S] Webhook dispatcher queues work without bound (R5)**
-- QA / scenario: Performance, availability · P2 "10x webhook burst for 5 min; p99 dispatch < 1 s; no OOM".
+- QA / scenario: Performance, availability · QS-P2 "10x webhook burst for 5 min; p99 dispatch < 1 s; no OOM".
 - Evidence (A): `rg -n "Executors\.new(Fixed|Cached)ThreadPool" src/main` →
   `src/main/java/shop/webhooks/WebhookDispatcher.java:23` `Executors.newFixedThreadPool(8)`; that factory backs the
   pool with an unbounded `LinkedBlockingQueue`.
 - Why it matters: risk — during a burst the queue grows without limit, so latency climbs and the heap can run out
-  (P2 fails on both measures). Sensitivity point: queue capacity × pool size determines p99 latency and memory under
+  (QS-P2 fails on both measures). Sensitivity point: queue capacity × pool size determines p99 latency and memory under
   burst. Tradeoff point: a bounded queue protects latency and memory but pushes back on or rejects producers.
 - Fix: `new ThreadPoolExecutor(8, 8, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(500),
   new ThreadPoolExecutor.CallerRunsPolicy())`; expose queue depth as a metric. Alternative: persist webhooks to a
@@ -56,7 +59,7 @@ as a question and is never a Blocker). Evidence level: A tool-verified, B read i
   Prevention: ArchUnit rule that only `shop.config` may call `Executors.newFixedThreadPool`/`newCachedThreadPool`.
 
 **ARCH-03 [Minor | Confirmed | Effort S] Network module leaks OkHttp through its API (D7)**
-- QA / scenario: Modifiability · M2 "replace the HTTP client by changing one module". Evidence (B):
+- QA / scenario: Modifiability · QS-M2 "replace the HTTP client by changing one module". Evidence (B):
   `core/network/build.gradle.kts:18` `api(libs.okhttp)` and `core/network/src/.../NetworkModule.kt:12`
   `fun client(): OkHttpClient`; 4 feature modules import `okhttp3.*` directly.
 - Fix: switch to `implementation(libs.okhttp)` and expose a `HttpTransport` interface. Alternative: accept the leak
@@ -102,7 +105,7 @@ Questions alone never block: ask them and approve conditionally.*
 
 ```text
 [Major] ARCH-02 (R5) Performance: newFixedThreadPool(8) queues webhooks without bound; a burst grows latency and
-heap (P2). Suggest ThreadPoolExecutor with ArrayBlockingQueue(500) + CallerRunsPolicy and a queue-depth metric.
+heap (QS-P2). Suggest ThreadPoolExecutor with ArrayBlockingQueue(500) + CallerRunsPolicy and a queue-depth metric.
 Alt: durable queue (more ops, no loss on restart).
 ```
 
@@ -112,7 +115,11 @@ Alt: durable queue (more ops, no loss on restart).
 
 ````markdown
 # Architecture review: <system name>
-<date> · commit `<sha>` · reviewer: <name> · depth: <skim | pass | deep dive>
+<date> · commit `<sha>` · reviewer: <name> · depth: <quick | pass | deep>
+
+*Depth decides the sections (SKILL.md "Review a repository"). Quick: fill 1, 2, 5, 6, 8, 9 (compressed table),
+10 (top 5 findings + non-risks) and 14; write "deep pass only" under the other headings. Pass: all, with the
+compressed §9 table and no Appendix C. Deep: all.*
 
 ## 1. Executive summary
 - **Overall assessment:** <2-3 sentences: fit for the stated quality goals? biggest structural strength?>
@@ -121,6 +128,9 @@ Alt: durable queue (more ops, no loss on restart).
 
 ## 2. Scope and method
 - Commit `<sha>`, branch `<name>`; modules in scope: <list>; out of scope: <list>
+- Working tree: <clean | N uncommitted files (reviewed at HEAD)> · History: <full | shallow clone | N commits>
+- Constraints: <read-only (no build tools run) | builds allowed>; side effects cleaned up: <none | removed `.venv`>
+- File universe: `git ls-files`, excluding <.claude/worktrees/, build/, kotlin-js-store/, generated/, ...>
 - Read: <entry points, composition root, build files, docs, ADRs>; Ran: <commands, see Appendix A>
 - Tools (with versions): <e.g. jdeps 21, madge 8.x, import-linter 2.x, git log>; timebox: <hours>
 - **Not verified:** <runtime behaviour, load, deployment config, ...>
@@ -145,6 +155,10 @@ flowchart LR
   classDef cycle stroke:#c00,stroke-width:2px;
   class billing,orders cycle
 ```
+- Intra-module view (optional; include when one build unit or package holds more than ~50% of the code): file- or
+  declaration-level graph of that unit, grouped by responsibility, from
+  [../references/architecture-recovery-and-metrics.md](../references/architecture-recovery-and-metrics.md) §4
+  "Single-package or flat modules"
 - C&C: <processes, services, queues, connectors and protocols>
 - Deployment: <artifacts, environments, data stores, external systems>
 
@@ -168,15 +182,23 @@ abstract classes / total types) or write A and D as "n/a" where the language has
 |---|---|---|---|
 | <path> | | | <path (N co-commits)> |
 
+*Shallow clone: write "not checked: shallow clone" and list the largest files as reading pointers only. Young or
+single-author repo: weight by lines changed and add commit-message themes; state the reduced confidence.*
+
 ## 8. Utility tree
 - <QA> -> <refinement> -> (<H|M|L> importance, <H|M|L> difficulty) <scenario ID>: <six-part scenario, one line>
 
 ## 9. Scenario analysis
+*Quick and pass depth: compressed table; put sensitivity and tradeoff points into the findings' "Why it matters".*
+| Scenario ID | Approaches | Risk | Non-risk (+ assumption) | Evidence file:line |
+|---|---|---|---|---|
+
+*Deep: the full table from evaluation-methods §4.*
 | Scenario ID | Attribute | Environment | Stimulus | Response (measure) | Approaches / decisions | Sensitivity | Tradeoff | Risk | Non-risk (+ assumption) | Reasoning | Evidence file:line |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 
-## 10. Findings (ranked: severity, confidence, cheapest fix first)
-<ARCH-nn blocks from §A>
+## 10. Findings (one flat list ranked: severity, confidence, cheapest fix first)
+<ARCH-nn blocks from §A; add "Theme: RT<n>" to each; do not group here, §11 does the grouping>
 - **Non-risks:** <one line each: sound decision + evidence>
 
 ## 11. Risk themes

@@ -26,7 +26,7 @@ Pick the row first; it fixes how much to load and what to produce. Escalate a ro
 |---|---|---|---|
 | **Small PR** (< ~200 changed lines, one module) | This file (section 4 checklist) | 1. Read the diff and the touched files' imports. 2. Run the checklist (use its commands for new edges and migrations). 3. Check only smells the diff could introduce (D1, D4, D5, M3, R1, C2, C3, C5). | 0-3 inline findings; "no architectural concerns" is a valid, short answer. |
 | **PR adding a module, dependency or integration** | This file + [module-layout-and-interfaces.md](module-layout-and-interfaces.md) + [fitness-functions.md](fitness-functions.md) | 1. Draw the before/after dependency edges. 2. Check direction and stability (D1-D3, D7). 3. Check the new interface (I1-I4) and runtime behaviour (R1, R3, R5). 4. Apply the ADR worthiness test. | Findings + proposed fitness function + "needs ADR: yes/no" with a draft title. |
-| **Repository review** | This file + [architecture-recovery-and-metrics.md](architecture-recovery-and-metrics.md) + [evaluation-methods.md](evaluation-methods.md) | 1. Recover the as-is module view and dependency graph. 2. Recover stated quality goals (README, ADRs, issues) or elicit them. 3. Sweep the full catalogue group by group. 4. Group findings into risk themes. | Full report from [../templates/architecture-review-report.md](../templates/architecture-review-report.md). |
+| **Repository review** | As listed in the REVIEW-REPO row of [../SKILL.md](../SKILL.md) | Follow SKILL.md "Review a repository" steps 0-9; this file serves step 5 (sweep the catalogue over hotspots and boundaries first) and the finding rules for steps 7-9. | Full report from [../templates/architecture-review-report.md](../templates/architecture-review-report.md). |
 | **"Is this ready for scale / production?"** | This file + [quality-attributes-runtime.md](quality-attributes-runtime.md) + [evaluation-methods.md](evaluation-methods.md) | 1. Write 3-6 quality-attribute scenarios with response measures (load, failure, deploy, security). 2. Walk each scenario through the code path. 3. Focus on R, C and I5. 4. Mark each scenario as met / at risk / unknown. | Lightweight ATAM output: scenarios, risks, non-risks, sensitivity and tradeoff points, prioritized fixes. |
 | **Design question** ("should we split X?", "where does Y go?") | [design-workflow.md](design-workflow.md) + relevant pattern file | 1. Restate as a driver (scenario). 2. Find the as-is evidence for the smell the question implies. 3. Give 2-3 options with tradeoffs. | Recommendation + ADR draft ([../templates/adr.md](../templates/adr.md)). |
 
@@ -103,8 +103,10 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
 - *What:* components reach collaborators through globals instead of receiving them.
 - *Signals:* Kotlin top-level mutable state `rg -n '^(private |internal |public )?(lateinit )?var \w+' --type kotlin`;
   mutable state inside objects `rg -n -A20 '^(private |internal )?object \w+' --type kotlin | rg '\bvar\b'`;
-  `ServiceLocator\.get|getInstance\(\)|Injector\.`; module-level mutable dicts in Python; package-level `var` in Go;
-  exported `let` singletons in TS. Confirm every hit by reading; a zero-hit result is not proof of absence.
+  `ServiceLocator\.get|getInstance\(\)|Injector\.`; module-level mutable dicts in Python; import-time singletons in
+  Python (`settings = Settings()`, `engine = create_engine(...)` at module level: config is read and the pool is built on
+  first import, before tests can intervene; `rg -n '^\w+ = (Settings|create_engine|create_async_engine|Redis|boto3\.client)\('`);
+  package-level `var` in Go; exported `let` singletons in TS. Confirm every hit by reading; a zero-hit result is not proof of absence.
 - *QA / tactic:* testability (*localize state storage*, *abstract data sources*), modifiability; concurrency safety.
 - *Why:* tests cannot substitute collaborators; initialization order and nullable globals cause startup crashes;
   unsynchronized writes from background threads are data races.
@@ -254,7 +256,10 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
   far above any user-facing budget; pass `AbortSignal.timeout(ms)`, available in Node 17.3+ and current browsers), `axios`
   without `timeout` (default 0 = none), Python `requests.get(` without `timeout=` (none by default),
   Go `http.Get(` / `http.DefaultClient` (no timeout), OkHttp without `callTimeout` (connect/read/write default to 10 s,
-  but no overall call timeout), Ktor client without the `HttpTimeout` plugin (engine-dependent defaults).
+  but no overall call timeout), Ktor client without the `HttpTimeout` plugin (engine-dependent defaults). Also check each
+  client library's default error mode, not just its timeout: a send whose result is only logged, or a library that
+  fails silently by default (python-emails' SMTP backend has defaulted to `fail_silently=True` with a short socket
+  timeout; verify in the installed source), turns an outage into silent loss (C3).
 - *QA / tactic:* availability (*retry*, *exception detection*, circuit breaker pattern), performance (*bound execution times*).
 - *Why:* one slow dependency exhausts threads/connections and takes the caller down.
 - *Fix:* explicit timeout per call, bounded retries with exponential backoff and jitter for idempotent operations only,
@@ -284,6 +289,9 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
 - *Signals:* `GlobalScope.launch` (marked `@DelicateCoroutinesApi`), `runBlocking` in production code, `go func()` without
   `context`/`errgroup`/`WaitGroup`, `Thread {` / `thread {`, un-awaited promises (`@typescript-eslint/no-floating-promises`),
   `asyncio.create_task` without a kept reference, DB/network calls in `@Composable` or on `Dispatchers.Main`.
+  Python ASGI: an `async def` handler that calls blocking libraries (`requests`, sync SQLAlchemy `Session`, `time.sleep`,
+  SMTP clients) blocks the event loop for every request; a sync `def` handler runs in the AnyIO worker threadpool
+  (default 40 tokens), so blocking I/O there is fine until 40 calls are in flight, then requests queue.
 - *QA / tactic:* performance (*introduce concurrency*, *schedule resources*), availability, testability (*limit nondeterminism*).
 - *Why:* orphaned work outlives its screen or request, leaks, races on shared state, and cannot be cancelled or tested.
 - *Fix:* one structured model per platform with scopes tied to lifecycles; bridge legacy threads at one boundary; record the choice in an ADR.
@@ -307,6 +315,10 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
   `ThreadPoolExecutor` with an `ArrayBlockingQueue` and a rejection policy); Go `for ... { go handle(x) }` or a
   goroutine per request with no semaphore, worker pool or `errgroup.Group.SetLimit(n)` (goroutine count grows with
   input); `new Map()` caches with no eviction; `functools.cache` / `@lru_cache(maxsize=None)`; one thread per session.
+  Connection pools sized against the server, not the process: SQLAlchemy `create_engine` defaults to `pool_size=5`,
+  `max_overflow=10`, `pool_timeout=30`, so each worker process can open 15 connections; multiply by `--workers`
+  (uvicorn/gunicorn) and by replicas, and compare with the database's `max_connections` (managed Postgres tiers are often
+  small). Likewise the AnyIO threadpool (40) caps concurrent sync handlers per process.
 - *QA / tactic:* performance (*bound queue sizes*, *limit event response*), availability.
 - *Why:* under load spikes memory or thread count grows until the process is killed, which converts overload into an outage.
 - *Fix:* bounds, eviction policy, backpressure, rejection with a clear error. *Default severity:* Major on server paths, Minor on clients.
@@ -348,6 +360,39 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
   banning `AlarmManager.setRepeating` and raw wake locks outside one module.
 - *False positives:* foreground refresh while the screen is on and the user is waiting.
 
+**R9 Fake or stub adapter reachable in production**
+- *What:* a simulated, fake or stub implementation of a port can be selected at runtime in a production build, for
+  example by a per-request health check or a missing config value.
+- *Signals:* `object Simulated\w*|class Fake\w*|class Stub\w*|InMemory\w*` implementing a production port in main
+  (not test) source sets (`rg -n '(object|class) (Simulated|Fake|Stub|Mock|Dummy)\w*\s*[:(]' -g '!**/test/**'`);
+  a function called per request that returns `if (node.isHealthy()) real else simulated`; `?: FakeX()` defaults.
+- *QA / tactic:* integrity, availability (*exception detection*: fail loudly instead of degrading into a fake).
+- *Why:* when the real dependency is down, users receive simulated results (fake txids, fake payments, fake email
+  delivery) that look like success.
+- *Fix:* select adapters once in the composition root from explicit configuration; fail startup or return an error
+  when the real adapter is unavailable; keep fakes in test or dev-only source sets.
+- *Default severity:* Blocker when the fake serves value transfer or other irreversible operations, else Major.
+- *Fitness function:* architecture test that production source sets contain no class named `Fake*`/`Simulated*`
+  implementing a port, or that only the composition root references them behind an environment check.
+- *False positives:* demo modes that are visibly labelled and cannot touch real value.
+
+**R10 Irreversible side effect after an unchecked durability write**
+- *What:* a record that must exist (payment, voucher, txid, job state) is saved in a way that can fail silently,
+  then an irreversible action (send funds, broadcast a transaction, charge a card, send an email) runs anyway.
+- *Signals:* a `save()`/`insert()`/`persist()` wrapped in `try { } catch (e) { log(e) }` or `runCatching { }` whose
+  result is ignored, followed in the same function by `send`/`transfer`/`broadcast`/`charge`; a txid or idempotency key
+  written only after the broadcast returns; retry after a failed broadcast with no check whether the first one landed.
+- *QA / tactic:* integrity, availability (*transactions*, *exception handling*, idempotency).
+- *Why:* a crash or DB error between the two steps leaves money sent with no record, so the system repays or
+  double-sends on retry.
+- *Fix:* write intent first and fail if the write fails (record status `sending` with an idempotency key or the
+  pre-computed txid); perform the side effect; mark `sent`; on restart, reconcile `sending` rows against the external
+  system before retrying. See [platforms-and-domains.md](platforms-and-domains.md) §9.
+- *Default severity:* Blocker for value transfer, Major otherwise.
+- *Fitness function:* fault-injection test that makes the save throw and asserts the side effect never runs; test
+  that a retry after a timed-out broadcast does not send twice.
+- *False positives:* side effects that are idempotent at the receiver by key.
+
 ### C. Cross-cutting
 
 **C1 Scattered authorization / auth only in the UI**
@@ -367,7 +412,15 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
 - *Why:* anyone with repo access holds production credentials; changing an environment needs a rebuild.
 - *Fix:* env/secret manager, config schema validated at startup; rotate anything that was committed.
 - *Default severity:* Blocker for live secrets (also rotate), Minor for non-secret config.
-- *Fitness function:* secret scanner in pre-commit and CI. *False positives:* test fixtures and documented public keys.
+- *Committed env files* (`.env`, `.env.dev`, `config/dev.yaml`) with placeholder secrets and a mode switch
+  (`FASTAPI_ENV=development`, `NODE_ENV`, `DEBUG=1`, `SPRING_PROFILES_ACTIVE=dev`) are a deploy-path question, not a
+  grep hit. For each committed env file, list every deploy path (image build, PaaS upload, CI job) and check whether it
+  loads the file: settings `env_file=` path relative to the working directory, Dockerfile `COPY . .` vs `.dockerignore`,
+  the platform's ignore file (`.gcloudignore`, `.vercelignore`, `.slugignore`), the CI job's `cwd`. A "fails open"
+  toggle (a dev flag that enables an unauthenticated route or downgrades a default-secret check to a warning) is
+  **Major** when any production path loads the file.
+- *Fitness function:* secret scanner in pre-commit and CI; a startup check that refuses dev mode or default secrets
+  when the environment is production. *False positives:* test fixtures and documented public keys.
 
 **C3 Inconsistent error handling across boundaries**
 - *What:* errors swallowed, or each module inventing its own error type with no translation at boundaries.
@@ -394,6 +447,9 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
 - *Signals:* `System.currentTimeMillis()`, `Date.now()`, `datetime.now()`, `time.Now()` inside logic; `new HttpClient()`/`OkHttpClient()` inside services; file or network I/O in constructors.
 - *QA / tactic:* testability (*abstract data sources*, *specialized interfaces*, *limit nondeterminism*).
 - *Why:* expiry and scheduling rules cannot be tested deterministically, so they ship untested.
+- *Python/FastAPI:* tests that `monkeypatch`/`patch` `settings.*` or module globals instead of using
+  `app.dependency_overrides[get_x] = fake`; that is the framework's seam, and patching globals signals that the
+  dependency never went through `Depends`.
 - *Fix:* inject `Clock`/`TimeSource`, clients and randomness. *Default severity:* Minor.
 - *Fitness function:* forbid direct clock calls in domain packages. *False positives:* timestamps in adapters and logging.
 
@@ -412,7 +468,11 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
 - *What:* external input (requests, messages, files, sensor readings) used before it is parsed into typed, checked values.
 - *Signals:* string-concatenated SQL, shell or HTML (`"SELECT ... " + id`, f-strings passed to `execute(`, `os.system(`
   with request data, `innerHTML =`); request bodies read as raw maps with no schema (zod, pydantic, Bean Validation
-  `@Valid`, `go-playground/validator`); sensor values used without range or staleness checks.
+  `@Valid`, `go-playground/validator`); sensor values used without range or staleness checks. No request size limit:
+  Ktor `call.receiveText()` / `receive<ByteArray>()` / `receiveChannel()` read without a `Content-Length` check or a
+  body-limit plugin (what Ktor ships for this varies by version; check the installed docs); FastAPI/Starlette has no
+  default body limit (set one at the proxy or in middleware); Express `express.json()` defaults to `100kb`, so look for
+  raised `limit:` values; Go handlers without `http.MaxBytesReader`.
 - *QA / tactic:* security (*validate input*), safety (*sanity checking*, *condition monitoring*).
 - *Why:* injection, or invalid data that reaches the domain and corrupts state or drives an actuator.
 - *Fix:* parse at the adapter into domain types that cannot hold invalid values; parameterized queries always.
@@ -456,6 +516,58 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
 - *Fitness function:* architecture test that only the guard module depends on the driver; fault-injection test asserting time-to-safe-state.
 - *False positives:* simulators and test harnesses.
 
+**C11 Permissive CORS or trust of proxy headers**
+- *What:* the server lets any origin make credentialed requests, or trusts client-supplied forwarding headers.
+- *Signals:* Ktor `install(CORS) { anyHost(); allowCredentials = true }` or `allowOrigins { true }` with credentials
+  (the origin is reflected, so any site can call the API with the user's cookies); Express
+  `cors({ origin: true, credentials: true })`; Spring `allowedOriginPatterns("*")` with `allowCredentials(true)`;
+  Ktor `install(ForwardedHeaders)` / `install(XForwardedHeaders)`, Express `app.set("trust proxy", true)`, or
+  uvicorn `--forwarded-allow-ips='*'` with no proxy in front (client IP, scheme and host become attacker-controlled,
+  which defeats rate limits by IP, audit logs and absolute-URL generation).
+- *QA / tactic:* security (*limit access*, *authenticate actors*).
+- *Why:* a malicious page performs state-changing calls as the logged-in user; IP-based limits (R6) are bypassed by
+  sending `X-Forwarded-For`.
+- *Fix:* explicit origin allowlist per environment from config; credentials only for listed origins; install
+  forwarded-header handling only behind a known proxy and restrict it to that proxy's addresses.
+- *Default severity:* Major when credentials (cookies) or IP-based controls are involved, Minor for public read-only APIs.
+- *Fitness function:* integration test sending `Origin: https://evil.example` with credentials and asserting no
+  `Access-Control-Allow-Origin` echo; test that a spoofed `X-Forwarded-For` does not change the rate-limit key.
+- *False positives:* token-in-header APIs with no cookies and `anyHost()` without credentials (still document why).
+
+**C12 Credentials and sessions cannot be revoked**
+- *What:* issued credentials stay valid until they expire, and expiry is long; logout, password change or compromise
+  does not end them.
+- *Signals:* access-token lifetimes far above ~1 h (`ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 8`, `expiresIn: "30d"`);
+  auth middleware that checks signature and `exp` only, with no `iat` vs password-changed-at, token version or `jti`
+  denylist; password-reset tokens that are plain signed JWTs (reusable until expiry, not bound to a stored single-use
+  record or to the current password hash); one token type accepted everywhere (no `typ`/`aud` separation between
+  access, refresh, reset and email-verify tokens); bearer tokens in `localStorage.setItem("...token", ...)` (readable by
+  any XSS); passwords sent in emails.
+- *QA / tactic:* security (*revoke access*, *limit exposure*, *authenticate actors*).
+- *Why:* a leaked token, a stolen laptop or a fired employee keeps access for days; a reset link in an old email
+  resets the password again.
+- *Fix:* short access tokens plus refresh tokens stored server-side; a per-user token version or
+  `password_changed_at` checked against `iat`; single-use reset tokens stored hashed with expiry; distinct `aud`/`typ`
+  per token purpose; httpOnly cookies or in-memory tokens instead of `localStorage`; never email a password.
+- *Default severity:* Major (raise per [evaluation-methods.md](evaluation-methods.md) §3 for starters and templates).
+- *Fitness function:* revocation test (change password or log out, then call with the old token, expect 401); reset
+  token reuse test (second use fails); test that a reset token is rejected as an access token.
+- *False positives:* short-lived tokens (minutes) with server-side refresh already revocable.
+
+**C13 Account-enumeration oracle**
+- *What:* login, signup or recovery endpoints behave observably differently for existing and non-existing accounts.
+- *Signals:* in recovery/login/signup handlers, a different status code or message for "user not found"
+  (`404`/`"User not found"` vs `200`); per-account work only for existing users (sending an email, hashing a password,
+  a DB write) that makes response time differ; `assert`/`raise` on a lookup result before the uniform response.
+- *QA / tactic:* security (*limit exposure*, *detect intrusion*).
+- *Why:* an attacker builds a list of registered emails for credential stuffing or phishing.
+- *Fix:* identical status and body for both cases; move the email send to a background job (so timing is equal);
+  hash against a dummy hash when the user does not exist; rate-limit (R6).
+- *Default severity:* Minor, Major where the user list itself is sensitive (health, finance, dating).
+- *Fitness function:* parametrized test calling each auth endpoint with an existing and a non-existing account and
+  asserting equal status, body and (roughly) latency.
+- *False positives:* signup that must say "email taken" by product decision; record it in an ADR and rate-limit.
+
 ### E. Evolution
 
 **E1 Decision without ADR, or ADR contradicted by code**
@@ -486,7 +598,10 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
 
 **E4 Build structure not reflecting intended layers**
 - *What:* intended layers exist only as packages in one build module; nothing prevents an illegal import.
-- *Signals:* one Gradle/npm/Go module holding all layers and no architecture test in CI.
+- *Signals:* one Gradle/npm/Go module holding all layers and no architecture test in CI; the whole module is one
+  package (most files share one `package` line), so layering cannot be enforced by package rules at all (detect and
+  recover edges with [architecture-recovery-and-metrics.md](architecture-recovery-and-metrics.md) §4 "Single-package
+  or flat modules").
 - *QA / tactic:* modifiability; *restrict dependencies*.
 - *Why:* the layer rule erodes one convenient import at a time.
 - *Fix:* separate Gradle/npm workspace/Go modules or enforce with a rule. *Default severity:* Minor.
@@ -519,6 +634,7 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
 | R1 | Availability, performance | Retry, exception detection, bound execution times; circuit breaker |
 | R3, R5 | Performance, availability | Schedule resources; bound queue sizes; limit event response |
 | R4 | Integrity/availability | Transactions (outbox) |
+| R9, R10 | Integrity, availability | Exception detection; transactions; intent recorded before side effect; idempotency |
 | R6 | Performance, security, availability | Manage work requests; restrict login; detect service denial |
 | R7 | Availability | Redundant spare; rollback (tested restore) |
 | R8 | Energy efficiency | Reduce usage; schedule resources; manage work requests (push) |
@@ -526,6 +642,9 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
 | C7 | Security, safety | Validate input; sanity checking |
 | C9 | Security | Encrypt data; authenticate actors; verify message integrity |
 | C10 | Safety | Barrier (interlock); limit consequences; recovery to a safe state |
+| C11 | Security | Limit access; authenticate actors (trusted proxies only) |
+| C12 | Security | Revoke access; limit exposure; authenticate actors |
+| C13 | Security | Limit exposure; detect intrusion |
 | C3, C4 | Availability | Exception handling; monitor |
 | C6 | Portability | Abstract common services; defer binding |
 | E1-E4 | Modifiability | Architecture decisions recorded and enforced |
@@ -537,17 +656,20 @@ name in parentheses when it changed (as in [quality-attributes-change.md](qualit
 Leave style, naming and correctness to other reviewers unless they cross a boundary.
 
 - [ ] **New edges and direction.** List imports added across module/package boundaries:
-  `git diff -U0 origin/main...HEAD | rg '^\+\s*(import |from \S+ import|.*require\()'`, then map each new import
-  to its module. Does any point outward/upward (D1) or close a cycle (D2)?
+  `git diff -U0 origin/main...HEAD | rg '^\+\s*(import |from \S+ import|.*require\(|using [A-Z]|use (crate|super|[a-z_]+)::|"[a-z0-9.-]+\.[a-z]+/)'`
+  (covers JS/TS, Python, JVM, C# `using`, Rust `use`, and Go paths added inside `import ( ... )` blocks), then map
+  each new import to its module. For Go, prefer diffing `go list -deps ./...` output on base vs head. Does any point outward/upward (D1) or close a cycle (D2)?
 - [ ] **New public API.** New exported symbols, `api(...)` deps, barrel exports, endpoints, event types (D7, E5, I3)?
 - [ ] **New module, or its absence.** Does the change deserve its own module (new bounded context, new deployable), or does it create a nano-module (M4)?
 - [ ] **Bypassed ports.** UI/handlers calling DB/HTTP/SDK directly (D4, I4)?
 - [ ] **New cross-cutting concern.** Auth, caching, retries, logging added locally instead of in the shared mechanism (C1, C3, C4)?
 - [ ] **Data ownership.** New tables, new writers to someone else's tables, new events (I5, R4)?
+- [ ] **Durable payloads.** New queue, outbox or job tables whose payloads hold secrets (passwords, reset tokens, API
+  keys) or unbounded PII? Store references and mint secrets at execution time; add a retention/purge job.
 - [ ] **Migration safety.** Schema and contract changes follow expand/contract; old and new versions can run side by side
   during rollout. Find risky statements with `git diff origin/main...HEAD -- ':(glob)**/migrations/**' '*.sql' | rg -i '^\+.*(drop column|rename column|drop table|not null)'`;
   any hit needs the expand/contract steps.
-- [ ] **Config and flags.** New env vars validated at startup; secrets not in code (C2); flags have an owner and removal date (E3).
+- [ ] **Config and flags.** New env vars validated at startup; secrets not in code (C2); flags have an owner and removal date (E3); CORS and forwarded-header config not widened (C11).
 - [ ] **Observability for new paths.** New remote calls or jobs emit logs with correlation ID and a metric (C4); timeouts set (R1).
 - [ ] **Tests at boundaries.** Contract or adapter tests for new integrations; domain logic unit-tested without infrastructure (C5).
 - [ ] **Manifest dependency additions.** Every new entry in `build.gradle.kts`/`libs.versions.toml`, `package.json`, `pyproject.toml`, `go.mod`: needed, maintained, license OK, in the right module, `implementation` not `api`.
@@ -557,10 +679,10 @@ Leave style, naming and correctness to other reviewers unless they cross a bound
 
 ## 5. Finding quality rules
 
-1. **Evidence is mandatory**, with its level on the scale shared with the report template and
-   [architecture-recovery-and-metrics.md](architecture-recovery-and-metrics.md): **A** tool-verified (command + output
-   excerpt), **B** read in code (file:line), **C** inferred (pattern seen in N places, not all read; names, layout, docs),
-   **D** reported (by a person or ticket; never the sole basis for Blocker or Major). No evidence, no finding; ask a
+1. **Evidence is mandatory**, with its level on the A-D scale defined in [../SKILL.md](../SKILL.md) "Evidence rules":
+   **A** measured (command + output excerpt), **B** observed (file:line), **C** inferred (pattern seen in N places, not
+   all read; names, layout, docs), **D** assumed/reported (by a person, ticket or you; never the sole basis for Blocker
+   or Major). No evidence, no finding; ask a
    question instead. Evidence level and confidence (section 6) are separate fields: level says where the claim comes
    from, confidence says how sure you are of the conclusion drawn from it.
 2. **Tie to a scenario.** State which quality-attribute scenario the smell endangers ("adding an iOS target", "p95 < 300 ms
@@ -572,7 +694,7 @@ Leave style, naming and correctness to other reviewers unless they cross a bound
 6. **No taste-based findings.** Preferences on style, pattern names or frameworks without a QA impact are not findings.
 7. **Fewer, stronger findings.** Ten well-evidenced findings beat forty weak ones. Merge duplicates; cite the count ("and 11 similar sites").
 8. **Acknowledge non-risks briefly.** One line each for decisions that are sound; it calibrates trust in the rest.
-9. **Group into risk themes** for repo reviews (e.g. "Composition by globals", "Unbounded remote calls"); ATAM calls these risk themes.
+9. **Group into risk themes** for repo reviews (e.g. "Composition by globals", "Unbounded remote calls"); ATAM calls these risk themes. Keep the findings list flat and severity-ranked; tag each finding with its theme and group in the themes table.
 10. **Accepted risk goes into an ADR**, with the reason and a revisit trigger, not into silence.
 11. **Phrase for the author.** Impact first, then evidence, then fix. Name the code, not the person. No generic advice
     ("follow SOLID"), no lecture on theory the fix does not need.
@@ -599,49 +721,54 @@ the top of the list is the most important, most certain and cheapest to act on.
 ## 7. Worked example
 
 Fictional TypeScript order service (`orders-api`) and Kotlin Android app (`shop-app`), commit `abc1234`.
-Stated drivers: *A1* checkout p95 < 400 ms and degrade gracefully when the payment provider is slow;
-*M1* add a web client reusing the domain; *S1* only order owners may read orders. Compressed; real findings use the
-full block from the report template.
+Stated drivers: *QS-A1* checkout p95 < 400 ms and degrade gracefully when the payment provider is slow;
+*QS-M1* add a web client reusing the domain; *QS-S1* only order owners may read orders. Compressed; real findings use the
+full block from the report template. Findings form one flat list in severity order, each tagged with its theme; the
+themes table does the grouping.
 
 ```markdown
-### Risk theme T1: remote dependencies can stall checkout (A1)
+### Findings
 
 **ARCH-01 [Major | Confirmed | Effort S] Payment call has no timeout or retry policy (R1)**
 AS-IS (evidence B): `src/payments/stripeClient.ts:42` `await fetch(PAY_URL, {method: "POST", body})`; no signal, no retry.
-Scenario: provider latency spikes to 30 s; each checkout holds a socket for up to undici's ~300 s default; A1 breaches.
+Scenario: provider latency spikes to 30 s; each checkout holds a socket for up to undici's ~300 s default; QS-A1 breaches.
 TO-BE: `signal: AbortSignal.timeout(1500)`, `Idempotency-Key` header, 2 jittered retries; on failure return 202, finish async.
 Alternative: queue all payments; simpler failure handling, but the UI loses instant confirmation.
-Guard: lint rule banning `fetch(` outside the `src/http/` wrapper.
+Guard: lint rule banning `fetch(` outside the `src/http/` wrapper. Theme: T1.
 
 **ARCH-02 [Major | Confirmed | Effort M] Order saved and event published as a dual write (R4)**
 AS-IS (evidence B): `src/orders/createOrder.ts:77-81` `await repo.save(order); await bus.publish("OrderCreated", ...)`.
 Scenario: broker down after commit -> stock never reserved; no reconciliation exists.
 TO-BE: outbox table written in the same transaction; relay publishes; consumers dedupe by event ID.
 Alternative: CDC (e.g. Debezium) on the orders table; no relay code, but adds an ops component.
-Guard: architecture test that `bus.publish` is only called from `src/outbox/relay.ts`.
-
-### Risk theme T2: the domain cannot be reused by a second client (M1)
+Guard: architecture test that `bus.publish` is only called from `src/outbox/relay.ts`. Theme: T1.
 
 **ARCH-03 [Major | Confirmed | Effort M] Domain imports persistence and UI frameworks (D1, D6)**
 AS-IS (evidence A: `rg -n '^import androidx' domain/` -> 2 hits): `domain/.../cart/Cart.kt:5` `import androidx.room.Entity`;
 `.../cart/PriceRules.kt:3` `import androidx.compose.runtime.mutableStateOf`.
-Scenario: M1 web client needs `PriceRules`; it drags Room and Compose into a Kotlin/JS or Wasm build.
+Scenario: QS-M1 web client needs `PriceRules`; it drags Room and Compose into a Kotlin/JS or Wasm build.
 TO-BE: plain data classes in `domain`; `CartEntity` + mapper in `data`; `StateFlow` exposed by the view model.
 Alternative: keep Room annotations and accept that the web client will not reuse domain; record in an ADR.
-Guard: Konsist/ArchUnit rule "domain depends on nothing but kotlin.* and kotlinx.coroutines/datetime".
+Guard: Konsist/ArchUnit rule "domain depends on nothing but kotlin.* and kotlinx.coroutines/datetime". Theme: T2.
 
 **ARCH-04 [Minor | Likely | Effort S] Views read repositories directly in 6 screens (D4)**
-AS-IS (evidence C: 6 `rg` hits, 1 read): `ui/orders/OrdersScreen.kt:58` `ordersRepository.observe()` + 5 similar sites.
+AS-IS (evidence B: `ui/orders/OrdersScreen.kt:58` `ordersRepository.observe()`; evidence C for 5 similar `rg` hits not read).
 TO-BE: route through `OrdersViewModel`; add a layered-architecture test.
-Alternative: document relaxed layering for read-only screens in an ADR; logic duplicates once M1 arrives.
+Alternative: document relaxed layering for read-only screens in an ADR; logic duplicates once QS-M1 arrives. Theme: T2.
 
 **ARCH-05 [Minor | Question | Effort S] Is `AppGraph.instance` mutated after startup? (D5)**
 AS-IS (evidence B): `app/AppGraph.kt:12` `lateinit var instance`, written in `ShopApp.onCreate` and `DebugMenu.kt:140`.
-Scenario: release build reaches `DebugMenu` -> background readers race on a partially built graph.
+Scenario: release build reaches `DebugMenu` -> background readers race on a partially built graph. Theme: T2.
 
 ### Non-risks
-- Server-side ownership check in `src/orders/policy.ts:20` applied in every order route: S1 is met.
+- Server-side ownership check in `src/orders/policy.ts:20` applied in every order route: QS-S1 is met.
 - Coroutines only, scopes tied to `viewModelScope`; no `GlobalScope` (evidence A: `rg -n GlobalScope` returned 0 hits).
+
+### Risk themes
+| Theme | Findings | Driver threatened |
+|---|---|---|
+| T1 Remote dependencies can stall or desynchronize checkout | ARCH-01, ARCH-02 | QS-A1 |
+| T2 The domain cannot be reused by a second client | ARCH-03, ARCH-04, ARCH-05 | QS-M1 |
 ```
 
 Report the full set with [../templates/architecture-review-report.md](../templates/architecture-review-report.md);

@@ -108,13 +108,15 @@ Three risks, one theme (RT1): fix the assumption, not the three lines one by one
 
 ## 3. Mini-ATAM in one sitting (default for repo and design reviews)
 
-A compressed, single-evaluator version of ATAM steps 2-6 plus 9. It is not an ATAM (no stakeholder phase); say so in the report.
+A compressed, single-evaluator version of ATAM steps 2-6 plus 9. It is not an ATAM (no stakeholder phase); say so in the report. The run order, depth and timebox are those of [../SKILL.md](../SKILL.md) "Review a repository"; the steps below are the detail for its steps 2 (drivers), 1 and 3-5 (approaches), 6 (tree, trace, table) and 7-8 (themes, findings).
 
-1. **Drivers.** Read README, ADRs, docs/, issue labels, SLOs, runbooks, and ask the user. Write 3-6 business goals and constraints. Anything you infer rather than read is marked **ASSUMED**.
-2. **Approaches.** From recovery (package graph, entry points, config, infra files), list the approaches in use with file evidence. Absence counts: "no timeout on outbound HTTP" is an approach finding.
-3. **Utility tree.** 5-8 leaves, each a scenario with a response measure, rated (importance, difficulty) as H/M/L. Importance comes from the user or docs; if you rated it, mark ASSUMED. Difficulty is yours.
+1. **Drivers** (SKILL step 2). Read README, ADRs, docs/, issue labels, SLOs, runbooks, and ask the user. Write 3-6 business goals and constraints. Anything you infer rather than read is marked **ASSUMED** (evidence level D).
+
+   **Templates, starters, SDKs and libraries** have no business goals of their own. Derive drivers from the README's feature claims and treat each claim as a promise to adopters ("production-ready auth", "deploy in one command"). Always add two scenarios: *an adopter extends it* (modifiability: add an entity/route/screen by touching N files) and *an adopter deploys it as-is* (security: defaults, secrets, debug switches, CORS in production). Every finding is inherited by all adopters, so raise severity one level for insecure defaults that adopters inherit silently (a default secret that only warns, a dev flag that opens a route).
+2. **Approaches** (SKILL steps 1, 3-5). From recovery (package graph, entry points, config, infra files), list the approaches in use with file evidence. Absence counts: "no timeout on outbound HTTP" is an approach finding.
+3. **Utility tree** (SKILL step 6). 5-8 leaves (3-5 in a quick pass), each a scenario with a response measure, rated (importance, difficulty) as H/M/L. Importance comes from the user or docs; if you rated it, mark ASSUMED. Difficulty is yours.
 4. **Trace the top 3** (H,H) then (H,M)/(M,H) scenarios through the code: entry point -> modules -> external calls -> storage. At each hop note which approach acts, which parameter the response depends on, and what else that parameter affects.
-5. **Fill the analysis table** (section 4), one row per (scenario, decision). Every risk row needs `file:line` evidence.
+5. **Fill the analysis table** (section 4), one row per (scenario, decision). Every risk row needs `file:line` evidence. Quick and pass depth use the compressed table (Scenario | Approaches | Risk | Non-risk + assumption | Evidence) and carry sensitivity and tradeoff points in the findings instead.
 6. **Cluster themes.** Group risks by root cause (2-4 themes). Link each theme to a driver from step 1. A theme with no driver is either a missing driver (ask) or not important.
 7. **Findings.** For each theme: fixes (tactic or pattern, with a sketch), and a fitness function that would stop regression ([fitness-functions.md](fitness-functions.md)).
 
@@ -139,7 +141,7 @@ A quality attribute with no leaves is a gap; a leaf without a response measure i
 - [ ] Module boundaries crossed and whether dependencies point the intended way.
 - [ ] Config or environment that changes behaviour (feature flags, per-env pool sizes).
 
-**Timebox.** For a medium repo (tens of thousands of lines) spend roughly: drivers 10%, approaches/recovery 20%, utility tree 10%, tracing 40%, table and themes 20%. If time runs short, analyse fewer scenarios deeply rather than all scenarios shallowly, and list the unanalysed leaves as open.
+**Timebox.** The total budget comes from the depth table in SKILL.md. Within it, for a medium repo (tens of thousands of lines), split roughly: drivers (SKILL step 2) 10%, approaches/recovery (steps 1, 3-5) 20%, utility tree (step 6) 10%, tracing (step 6) 40%, table and themes (steps 6-7) 20%. If time runs short, analyse fewer scenarios deeply rather than all scenarios shallowly, and list the unanalysed leaves as open.
 
 ### 3.1 Worked example: TypeScript checkout API + worker
 
@@ -151,40 +153,40 @@ Recovered approaches: AP1 Layers (`routes -> services -> repos`); AP2 `PaymentPo
 Utility
 ├── Performance
 │   └── Checkout latency
-│       └── P1 (H,H) 200 checkout req/s at peak, normal ops -> p99 < 800 ms
+│       └── QS-P1 (H,H) 200 checkout req/s at peak, normal ops -> p99 < 800 ms
 ├── Availability
 │   ├── Provider outage
-│   │   └── A1 (H,H) payment provider returns 5xx for 5 min -> orders accepted, charged later, zero double charges
+│   │   └── QS-A1 (H,H) payment provider returns 5xx for 5 min -> orders accepted, charged later, zero double charges
 │   └── Worker crash
-│       └── A2 (H,M) worker killed mid-job -> job resumes, fulfilment within 10 min
+│       └── QS-A2 (H,M) worker killed mid-job -> job resumes, fulfilment within 10 min
 ├── Modifiability
 │   └── New provider
-│       └── M1 (H,M) add Adyen alongside Stripe -> <= 5 person-days, only src/payments/ changes   [importance ASSUMED]
+│       └── QS-M1 (H,M) add Adyen alongside Stripe -> <= 5 person-days, only src/payments/ changes   [importance ASSUMED]
 ├── Security
 │   └── Tampered price
-│       └── S1 (M,H) client posts altered price -> server recomputes, 0 accepted
+│       └── QS-S1 (M,H) client posts altered price -> server recomputes, 0 accepted
 └── Testability
-    └── T1 (M,L) run checkout service tests without network -> < 30 s, no provider sandbox
+    └── QS-T1 (M,L) run checkout service tests without network -> < 30 s, no provider sandbox
 ```
 
-Analysed P1 and A1 (the (H,H) leaves); M1 next if time allows. Two rows of the analysis table:
+Analysed QS-P1 and QS-A1 (the (H,H) leaves); QS-M1 next if time allows. Two rows of the analysis table:
 
 | ID | Attr | Env | Stimulus | Response | Approaches | Sensitivity | Tradeoff | Risk | Non-risk | Reasoning | Evidence |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| P1 | Perf | Peak | 200 checkout/s | p99 < 800 ms | AP1, AP2, AP4 | SP1 pool size 20 for provider calls; SP2 price-cache TTL | TP1 price TTL 300 s: latency vs price consistency | R1 charge call inside DB tx: pool connections held for provider latency, pool (10) saturates | N1 AP4 cache fine *assuming* prices change < hourly | Provider p99 ~600 ms (ASSUMED, from provider status page / APM; confirm) held inside the DB tx: 10 connections cap throughput near 16 tx/s; confirm with a load test | `src/orders/service.ts:88`, `src/db.ts:5`, `src/payments/stripe-adapter.ts:14` |
-| A1 | Avail | Provider 5xx 5 min | Charge fails | Accept, charge later, no double charge | AP2, AP3, AP5 | SP3 retry count/backoff | TP2 retries: availability vs provider load and latency | R2 no timeout or breaker (AP5); R3 retries without idempotency key: double-charge possible | N2 AP3 queue durable *assuming* Redis AOF on | Synchronous charge in request path; checkout fails for the outage; retries re-POST charge | `src/payments/stripe-adapter.ts:31`, `api/routes/checkout.ts:40`, `infra/redis.conf` (ASSUMED) |
+| QS-P1 | Perf | Peak | 200 checkout/s | p99 < 800 ms | AP1, AP2, AP4 | SP1 pool size 20 for provider calls; SP2 price-cache TTL | TP1 price TTL 300 s: latency vs price consistency | R1 charge call inside DB tx: pool connections held for provider latency, pool (10) saturates | N1 AP4 cache fine *assuming* prices change < hourly | Provider p99 ~600 ms (ASSUMED, from provider status page / APM; confirm) held inside the DB tx: 10 connections cap throughput near 16 tx/s; confirm with a load test | `src/orders/service.ts:88`, `src/db.ts:5`, `src/payments/stripe-adapter.ts:14` |
+| QS-A1 | Avail | Provider 5xx 5 min | Charge fails | Accept, charge later, no double charge | AP2, AP3, AP5 | SP3 retry count/backoff | TP2 retries: availability vs provider load and latency | R2 no timeout or breaker (AP5); R3 retries without idempotency key: double-charge possible | N2 AP3 queue durable *assuming* Redis AOF on | Synchronous charge in request path; checkout fails for the outage; retries re-POST charge | `src/payments/stripe-adapter.ts:31`, `api/routes/checkout.ts:40`, `infra/redis.conf` (ASSUMED) |
 
 **Risk theme RT1 (R1, R2, R3): "The payment provider is treated as a local, reliable call."** No timeout, no breaker, no idempotency, and it runs inside a DB transaction. Threatens G1 and G2. Fixes: move the charge out of the transaction (outbox row, worker charges), add timeout + circuit breaker in the adapter, send an idempotency key derived from the order ID. Fitness functions (an import rule alone cannot see transaction scopes, so split the check):
 - **Structural:** after the outbox change only the worker's charge processor may call the provider. dependency-cruiser rule in the `forbidden` array: `{ name: "payments-only-from-charge-worker", severity: "error", from: { path: "^(api|src/orders)/" }, to: { path: "^src/payments/" } }` (or the equivalent eslint-plugin-boundaries element rule).
 - **Transaction scope, runtime guard (preferred):** open transactions only through a `withTransaction()` helper that sets an `AsyncLocalStorage` flag; `PaymentPort` adapters throw in test/dev when the flag is set. Any integration test that charges inside a transaction then fails, including indirect calls.
 - **Transaction scope, lint (cheaper, weaker):** an ESLint `no-restricted-syntax` selector such as `CallExpression[callee.property.name='transaction'] CallExpression[callee.property.name='charge']`. It catches only the lexical case, and the exact selector depends on the DB client's API.
-- Keep: a contract test asserting every adapter call sends an idempotency key; a nightly P1 load test.
+- Keep: a contract test asserting every adapter call sends an idempotency key; a nightly QS-P1 load test.
 
 ---
 
 ## 4. Analysis table template
 
-One row per (scenario, decision). Keep IDs stable (`P1`, `AP2`, `SP2`, `TP1`, `R3`, `N2`, `RT1`) so themes and fixes can reference them.
+One row per (scenario, decision). Keep IDs stable (`QS-P1`, `AP2`, `SP2`, `TP1`, `R3`, `N2`, `RT1`) so themes and fixes can reference them.
 
 | Scenario ID | Attribute | Environment | Stimulus | Response (measure) | Approaches / decisions | Sensitivity | Tradeoff | Risk | Non-risk (+ assumption) | Reasoning | Evidence file:line |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -250,21 +252,21 @@ Steps (condensed from the book's nine):
 
 ### 7.1 Worked example: choosing remediations for the checkout system
 
-Votes (100 split across six scenarios from section 3.1): P1 45, A1 27, M1 18, S1 6, T1 4, A2 0. The top half survives:
+Votes (100 split across six scenarios from section 3.1): QS-P1 45, QS-A1 27, QS-M1 18, QS-S1 6, QS-T1 4, QS-A2 0. The top half survives:
 
 | Scenario | Votes | W | Worst | Current | Desired | Best |
 |---|---|---|---|---|---|---|
-| P1 checkout p99 | 45 | 1.0 | 2000 ms -> 0 | 1200 ms (ASSUMED; measure) -> 30 | 600 ms -> 80 | 300 ms -> 100 |
-| A1 orders accepted in provider outage | 27 | 0.6 | 0% -> 0 | 0% -> 0 | 95% -> 85 | 99.9% -> 100 |
-| M1 days to add a provider | 18 | 0.4 | 30 d -> 0 | 20 d -> 40 | 5 d -> 90 | 2 d -> 100 |
+| QS-P1 checkout p99 | 45 | 1.0 | 2000 ms -> 0 | 1200 ms (ASSUMED; measure) -> 30 | 600 ms -> 80 | 300 ms -> 100 |
+| QS-A1 orders accepted in provider outage | 27 | 0.6 | 0% -> 0 | 0% -> 0 | 95% -> 85 | 99.9% -> 100 |
+| QS-M1 days to add a provider | 18 | 0.4 | 30 d -> 0 | 20 d -> 40 | 5 d -> 90 | 2 d -> 100 |
 
 Strategies (costs in person-weeks):
 
 | Strategy | Expected responses | Expected utility | b_ij | B_i | C_i | VFC |
 |---|---|---|---|---|---|---|
-| S-A Extend caching to catalogue and stock-availability reads (prices already cached by AP4) | P1: 1100 ms (reads are not the traced bottleneck; R1 still caps throughput) | P1: 30 + 100 x (50/600) = 38.3 | P1 +8.3 | 8.3 | 3 | 2.8 |
-| S-B Split payments module behind `PaymentPort` with per-provider adapters | M1: 6 d | M1: 40 + 14 x (50/15) = 86.7 | M1 +46.7 | 46.7 x 0.4 = 18.7 | 4 | 4.7 |
-| S-C Move the charge out of the DB tx: outbox row, worker charges async, circuit breaker | A1: 95%; P1: 500 ms (the ~600 ms provider call leaves the request path; R1 removed) | A1: 85; P1: 80 + 100 x (20/300) = 86.7 | A1 +85; P1 +56.7 | 85 x 0.6 + 56.7 = 107.7 | 5 | 21.5 |
+| S-A Extend caching to catalogue and stock-availability reads (prices already cached by AP4) | QS-P1: 1100 ms (reads are not the traced bottleneck; R1 still caps throughput) | QS-P1: 30 + 100 x (50/600) = 38.3 | QS-P1 +8.3 | 8.3 | 3 | 2.8 |
+| S-B Split payments module behind `PaymentPort` with per-provider adapters | QS-M1: 6 d | QS-M1: 40 + 14 x (50/15) = 86.7 | QS-M1 +46.7 | 46.7 x 0.4 = 18.7 | 4 | 4.7 |
+| S-C Move the charge out of the DB tx: outbox row, worker charges async, circuit breaker | QS-A1: 95%; QS-P1: 500 ms (the ~600 ms provider call leaves the request path; R1 removed) | QS-A1: 85; QS-P1: 80 + 100 x (20/300) = 86.7 | QS-A1 +85; QS-P1 +56.7 | 85 x 0.6 + 56.7 = 107.7 | 5 | 21.5 |
 
 Ranking by VFC: S-C, S-B, S-A. With 9 person-weeks: S-C (5) + S-B (4); S-A waits. Sanity check: the intuitive cheap fix (a cache) does not touch the traced bottleneck, so it ranks last; the fix for R1 wins on both latency and money (G1, G2). Always derive expected responses from the scenario trace, not from the strategy's reputation. Also note hidden effects the scenarios do not capture: S-C makes "order accepted" and "order charged" separate states (add a scenario for charge-failure handling), and S-C is cheaper once S-B exists, so estimate combinations when strategies interact.
 
@@ -285,6 +287,8 @@ Ranking by VFC: S-C, S-B, S-A. With 9 person-weeks: S-C (5) + S-B (4); S-A waits
 | Load/soak/chaos test | What is the actual response measure? | Performance or availability scenario is (H,H) | Medium-high | Measured p99, error rates, recovery time |
 | CBAM (section 7) | Which fix is worth it? | Several options, limited budget | Medium | Ranked strategies |
 | Full ATAM or LAE (sections 5-6) | Organisation-level assurance | Explicitly requested; many stakeholders | High | Formal report |
+| SAAM (Software Architecture Analysis Method; ATAM's predecessor) [verify wording] | How well does the architecture absorb anticipated changes? | Scenario-based and modifiability-focused; if asked for it, run the mini-ATAM (section 3) with change scenarios instead | Medium | Scenario-by-component change table |
+| ARID (Active Reviews for Intermediate Designs) [verify wording] | Is this partial design or interface usable by the people who will build on it? | Reviewing an interface, API or SDK before it is finished: reviewers use it to write code or usage scenarios | Low-medium | Issues found while using the design |
 
 **PR walkthrough triggers.** Run a scenario walkthrough when the diff matches `timeout|retry|backoff|ttl|maxSockets|poolSize|max_connections|concurrency|prefetch|@Transactional|BEGIN|transaction(`, changes files under `infra/`, `helm/`, `*.tf`, `docker-compose*`, or changes a module's public interface. In the PR comment, name the scenario ID each hit affects and say whether it moves a known sensitivity point.
 
@@ -297,7 +301,7 @@ Combine: reasoning finds the risk, measurement confirms it, fitness functions ke
 Use [../templates/architecture-review-report.md](../templates/architecture-review-report.md) (repository variant) and its section order; do not invent another. Within it:
 - [ ] State the method and its deviations in "Scope and method" ("mini-ATAM, single evaluator, no stakeholder phase"); mark ASSUMED drivers.
 - [ ] Put the top risk themes in the executive summary ("Top 3 risks"), each linked to the business goal it threatens and its risk IDs.
-- [ ] Group the Findings section under their risk theme; rank findings with the severity / confidence / cheapest-fix rubric in [review-playbook.md](review-playbook.md) §6. Each finding has `file:line` evidence, the scenario ID, a concrete fix (tactic/pattern plus sketch) and a fitness function.
+- [ ] Keep the Findings section one flat list ranked with the severity / confidence / cheapest-fix rubric in [review-playbook.md](review-playbook.md) §6, tag each finding with its theme, and let the Risk themes table do the grouping. Each finding has `file:line` evidence, the scenario ID, a concrete fix (tactic/pattern plus sketch) and a fitness function.
 
 Add what the template does not prompt for:
 - Sensitivity and tradeoff points worth an ADR (list under "Suggested ADRs"; the team should decide consciously).

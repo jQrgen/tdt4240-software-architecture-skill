@@ -54,8 +54,16 @@ e.g. `checkout/api/OrderController.kt:88` calls `PspClient.capture()` inline ins
 **Functional drivers** [the 1-5 use cases that shape structure, not the full backlog]
 e.g. Capture payment exactly once per order, even when the client retries.
 
-**Constraints** [non-negotiables: platform, regulation, budget, team, deadlines, contracts]
+**Constraints** [non-negotiables: platform, regulation, budget, team, deadlines, contracts, and the host's process
+model: can it run a worker, cron, does it scale to zero]
 e.g. Must stay on PostgreSQL 15; no new managed services this quarter.
+
+**Open questions** [3-5 questions whose answers change the structure. In non-interactive runs, list them with the
+default you assumed; scenarios and ADRs cite the question IDs they depend on.]
+
+| ID | Question | Why it changes the structure | Default assumed |
+|---|---|---|---|
+| Q1 | <question> | <what flips if the answer differs> | <ASSUMED value> |
 
 **Quality-attribute scenarios** [3-7, six-part (source, stimulus, artifact, environment, response, response
 measure). Mark each CONFIRMED (stakeholder agreed the number) or ASSUMED (you proposed it; needs sign-off).
@@ -151,6 +159,11 @@ import-linter, dependency-cruiser, Konsist and others: ../references/fitness-fun
 |---|---|---|---|
 | domain imports nothing from adapters | ArchUnit: `noClasses().that().resideInAPackage("..domain..").should().dependOnClassesThat().resideInAPackage("..adapters..")` | `./gradlew test` in the CI merge-request pipeline | QS-M1 |
 
+## 10b. Verification results
+[Commands run and their results, as level-A evidence: build, type check, tests, fitness functions, against the base
+SHA. If the repo could not be modified, the scratch copy's path and the throwaway services used.]
+e.g. `uv run pytest tests/notifications` in /tmp/scratch-abc123 (base `abc123`, Postgres 16 + Mailpit containers): 14 passed.
+
 ## 11. Risks, open questions, deliberately not doing
 [Risks: what could make a scenario fail. Open questions: owner and due date; every ASSUMED value from section 3
 goes here. Not doing: explicit non-goals so reviewers do not ask.]
@@ -170,7 +183,8 @@ e.g. `docs/adr/0014-async-payment-capture.md` (Proposed)
 - [ ] Data ownership, concurrency and error model are stated, not implied.
 - [ ] Rollout has a flag or migration path and a rollback plan.
 - [ ] Sensitivity and tradeoff points, risks and non-goals are listed; each significant decision has an ADR.
-- [ ] Code skeletons compile and the fitness functions pass (or fail only on the known, listed divergences).
+- [ ] Code skeletons compile and the fitness functions pass (or fail only on the known, listed divergences); section 10b
+      records the commands and results.
 ````
 
 ---
@@ -338,7 +352,7 @@ sequenceDiagram
 ## 8. Decisions
 | ADR | Title | Status | Embodied / Proposed | Affects QG |
 |---|---|---|---|---|
-| [ADR-001](adr/0001-....md) | <title> | Accepted | Embodied | QG-2 |
+| ADR-001 (`docs/adr/0001-<title>.md`) | <title> | Accepted | Embodied | QG-2 |
 
 ## 9. Quality requirements
 ### 9.1 Utility tree

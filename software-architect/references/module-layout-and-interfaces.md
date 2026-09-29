@@ -81,6 +81,23 @@ the composition root.
 
 Each ✓ and each named package becomes one assertion in [fitness-functions.md](fitness-functions.md).
 
+**Variant: one feature package inside a package-by-layer app.** Most brownfield work adds a layered feature
+(`app/notifications/`) to a host app organised as `api/`, `core/`, `models/`, `crud/`. Do not restructure the host;
+give the feature its own layers and state how it may touch the host's columns:
+
+| row → may use ↓ col | feature/domain | feature/service | feature/adapters | feature/wiring | host `models` | host `core` (config, db) | host `api` |
+|---|---|---|---|---|---|---|---|
+| **feature/domain** | – | | | | | | |
+| **feature/service** (use cases, ports) | ✓ | – | | | | | |
+| **feature/adapters** (DB rows, SMTP, HTTP) | ✓ | ✓ (ports) | – | | ✓ | ✓ | |
+| **feature/wiring** (providers, lifespan hooks) | ✓ | ✓ | ✓ | – | | ✓ | |
+| **host `api`** (routes, deps) | | ✓ (entry functions only) | | ✓ | ✓ | ✓ | – |
+| **host `models` / `core`** | | | | | – | – | |
+
+The host never imports feature internals except the service entry points and the wiring; the feature never imports
+host routes. Enforce with import-linter `protected` (feature adapters importable only by feature wiring) and
+`forbidden` (host `models`/`core` never import the feature).
+
 ## 3. Enforcement by language and build system
 
 Prefer the **compiler** over a **linter**, and a linter over **convention**. Record the mechanism beside each rule.
@@ -98,7 +115,7 @@ Prefer the **compiler** over a **linter**, and a linter over **convention**. Rec
 | TypeScript | dependency-cruiser, eslint-plugin-boundaries | **Linter** (CI) | For layer rules inside one package |
 | Nx monorepo | `@nx/enforce-module-boundaries` with project tags (Nx 16+; older: `@nrwl/nx/enforce-module-boundaries`) | **Linter** | Use only if the repo already uses Nx. Do not introduce Nx just for this |
 | Python | Leading underscore `_module`, `__all__` | **Convention** | Nothing stops `from pkg._impl import x` |
-| Python | import-linter contracts (`layers`, `forbidden`, `independence`), run with `lint-imports` | **Linter** (CI) | The practical enforcement for Python. See §4.4 |
+| Python | import-linter contracts (`layers`, `forbidden`, `independence`, `protected`, `acyclic_siblings`), run with `lint-imports` | **Linter** (CI) | The practical enforcement for Python. See §4.4 |
 | Go | `internal/` directories | **Compiler** (go tool) | Importable only from within the tree rooted at the parent of `internal/` |
 | Go | `cmd/<binary>/main.go`; no `pkg/` by default | **Convention** | One composition root per binary. Use `pkg/` only if the repo already does or to mark a deliberate public library API |
 | Go | go-arch-lint, or a `go list -deps` script in CI | **Linter** | For layer rules inside `internal/` |
@@ -202,6 +219,34 @@ source_modules = ["shop.adapters.inbound"]
 forbidden_modules = ["shop.adapters.outbound"]
 ```
 Run `lint-imports`. Fuller contracts: [fitness-functions.md](fitness-functions.md) §2.4.
+
+### 4.4b FastAPI + SQLModel/SQLAlchemy + Alembic (brownfield)
+
+Adding a feature package to an existing app (e.g. the FastAPI full-stack template layout `app/api`, `app/core`,
+`app/models.py`, `app/crud.py`, `app/alembic`):
+
+- **Composition root per request:** FastAPI `Depends` providers (typically `app/api/deps.py`) are where ports get their
+  adapters. Add `get_notifier(session: SessionDep) -> Notifier` there or in the feature's `wiring.py`; routes depend on
+  the provider, never construct adapters. Tests replace providers with `app.dependency_overrides[get_notifier] = ...`.
+- **One `wiring.py` per process:** the web app and a worker process (`python -m app.worker`) each build their graph in
+  one place; the worker does not import FastAPI.
+- **In-process background resources** (pollers, schedulers, client pools) start and stop in the `lifespan` handler
+  (`FastAPI(lifespan=...)`), not at import time and not in deprecated `@app.on_event`. Whether a separate worker
+  process is possible depends on the host (recon: deploy target and process model).
+- **Alembic sees only imported models.** A new SQLModel/SQLAlchemy table must be imported where `env.py` builds
+  `target_metadata` (often via `from app.models import SQLModel`), or `alembic revision --autogenerate` silently
+  misses it. Put new models in a module that module imports, then read the generated migration.
+- **Who owns the unit of work.** An outbox or job insert must join the caller's session and commit with the business
+  change. Existing CRUD helpers that call `session.commit()` internally break this: either add non-committing
+  variants (`flush()` only) and commit once in the route/service, or enqueue after the helper's commit and accept the
+  gap (state it in the ADR).
+- **Tests and the root `conftest.py`:** templates often have an autouse fixture that opens a real DB session for every
+  test. Put pure unit tests for the feature where they do not inherit it (a separate test root), or run them with
+  `pytest --noconftest`; do not make domain tests need Postgres.
+
+Django equivalent: a feature is an app (`INSTALLED_APPS`); wire signal handlers and start nothing heavy in
+`AppConfig.ready()`; enqueue side effects with `transaction.on_commit(lambda: ...)` so they run only after commit
+(or write an outbox row inside the transaction when the effect must not be lost).
 
 ### 4.5 Go
 
