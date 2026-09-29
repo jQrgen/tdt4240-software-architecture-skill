@@ -1,46 +1,50 @@
-# TDT4240 Software Architecture skill
+# Software Architect skill for Claude
 
 An [Agent Skill](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview)
-that turns Claude into a study companion and reviewer for NTNU's **TDT4240 Software
-Architecture** (*Programvarearkitektur*). It explains the syllabus, writes and checks
-six-part quality attribute scenarios and tactic trees, helps choose architectural and
-design patterns, coaches exam answers, and reviews the group project's requirements,
-architecture and ATAM documents.
+that makes Claude work like a senior/staff software architect inside your codebase. It
+designs and builds features and systems, reviews pull requests and whole repositories for
+architecture, and writes decision records and architecture documentation. It is language
+and framework agnostic, with concrete examples for Kotlin/Java/KMP, TypeScript, Python, Go,
+Rust and .NET.
 
-The skill lives in [`tdt4240-software-architecture/`](tdt4240-software-architecture/):
-a short [`SKILL.md`](tdt4240-software-architecture/SKILL.md) plus reference files and
-document templates that Claude loads only when a question needs them.
+The skill lives in [`software-architect/`](software-architect/): a procedural
+[`SKILL.md`](software-architect/SKILL.md) plus reference files and templates that Claude
+loads only when a task needs them.
 
-> Unofficial study aid. Not affiliated with or endorsed by NTNU or the course staff.
-> Always check this year's reading list (Leganto), Blackboard and the course page;
-> official templates and instructions take precedence.
+## What it does
 
-## Syllabus coverage
+**Design and build.** Recovers the current structure, elicits architecturally significant
+requirements as six-part quality-attribute scenarios with numeric response measures, picks
+tactics and patterns with explicit tradeoffs and a named runner-up, lays out modules,
+ports and the composition root, writes ADRs, produces a compilable skeleton with one
+vertical slice, and adds architecture tests (fitness functions) to your existing CI.
 
-Chapter numbers refer to Bass, Clements & Kazman, *Software Architecture in Practice*
-(SAiP). The 4th edition (2021) is current; the public 2015/2016 exams and the Wikipendium
-compendium use the 3rd edition (2013). The skill gives both numbers where they differ.
+- "Design a notification service. It must deliver 99.9 % of messages within 5 s and survive
+  a provider outage."
+- "How should I structure offline sync in this KMP app?"
+- "Split the `core` module of this Gradle project; it has become a dumping ground."
 
-| Topic | SAiP 4th ed. | SAiP 3rd ed. | Reference file |
-|---|---|---|---|
-| What architecture is, structures, why it matters, contexts | ch. 1-2 | ch. 1-3 | `foundations.md` |
-| Quality attributes, scenarios and tactics in general | ch. 3 | ch. 4 | `quality-attributes-classic.md` |
-| Availability, modifiability, performance, security, testability, usability | ch. 4, 8, 9, 11, 12, 13 | ch. 5, 7, 8, 9, 10, 11 | `quality-attributes-classic.md` |
-| Interoperability → integrability | ch. 7 (integrability) | ch. 6 (interoperability) | both QA files |
-| Deployability, energy efficiency, safety, other QAs | ch. 5, 6, 10, 14 | ch. 12 (other QAs) | `quality-attributes-4th-edition.md` |
-| ASRs, QAW, utility tree, ADD, architecture debt | ch. 19, 20, 23 | ch. 16, 17 | `requirements-and-design.md` |
-| Architectural patterns (Layered, MVC, Broker, Pipe-and-Filter, Client-Server, P2P, SOA, Pub-Sub, Shared-Data, Map-Reduce, Multi-tier) | inside QA chapters | ch. 13 | `architectural-patterns.md` |
-| GoF design patterns, game architecture (Rollings & Morris ch. 17), game loop, ECS | article / book | article / book | `design-and-game-patterns.md` |
-| Documentation: Views and Beyond, Kruchten 4+1, IEEE 1471 / ISO 42010 (+ arc42, C4, ADRs) | ch. 22 | ch. 18 | `documentation.md` |
-| Evaluation: ATAM, utility tree, lightweight evaluation, CBAM | ch. 21 | ch. 21, 23 | `evaluation.md` |
-| Cloud, virtualization, interfaces, mobile, edge-dominant systems, quantum | ch. 15-18, 26 | ch. 26-27 | `platforms-and-emerging-topics.md` |
-| Coplien (1998) on design patterns | article | article | `architectural-patterns.md` |
-| Exam strategy, worked answers, glossary, drills | | | `exam-prep.md` |
-| Course facts, project workflow, common feedback | | | `course-and-project-guide.md` |
-| Requirements, architecture and ATAM document scaffolds | | | `templates/` |
+**Review a PR.** Classifies the change, maps every new import edge onto the intended
+dependency rules, checks for bypassed ports, missing timeouts/idempotency, contract breaks
+and ADR drift, and returns a verdict with at most ~7 ranked findings, each with file:line
+evidence, a concrete fix and a fitness function to prevent recurrence.
 
-Which edition and which chapters are on this year's list is not publicly confirmed; the
-skill says so rather than guessing.
+- "Review this PR for layering violations." / "Architecture review of MR !412."
+
+**Review a repository.** Recovers the as-is module, component-and-connector and allocation
+views, compares them with the intended architecture (reflexion model), finds cycles,
+hotspots and change coupling, runs a lightweight ATAM-style evaluation on the top
+scenarios, and reports risk themes and a now/next/later roadmap.
+
+- "Recover the architecture of this repo and tell me why it is so hard to change."
+- "Is this service ready to handle 10x traffic?"
+
+**Decide, document, enforce.**
+
+- "Event-driven or request/response between orders and billing?"
+- "Write an ADR for moving from SQLite to Postgres."
+- "Document this system with arc42 and C4 diagrams."
+- "Make 'the domain must not depend on Android' an enforced rule."
 
 ## Install
 
@@ -49,96 +53,112 @@ skill says so rather than guessing.
 ```sh
 git clone https://github.com/jQrgen/tdt4240-software-architecture-skill.git
 mkdir -p ~/.claude/skills
-cp -R tdt4240-software-architecture-skill/tdt4240-software-architecture ~/.claude/skills/
-# or keep it updatable with a symlink:
-# ln -s "$PWD/tdt4240-software-architecture-skill/tdt4240-software-architecture" ~/.claude/skills/
+ln -s "$PWD/tdt4240-software-architecture-skill/software-architect" ~/.claude/skills/software-architect
+# or copy it: cp -R tdt4240-software-architecture-skill/software-architect ~/.claude/skills/
 ```
 
-**Claude Code (one project, shared with your group)**
+**Claude Code (one project, shared with the team)**
 
-Copy or symlink the `tdt4240-software-architecture` folder into the project's
-`.claude/skills/` directory and commit it.
+Copy or symlink `software-architect/` into the project's `.claude/skills/` directory and
+commit it.
 
 **claude.ai / Claude desktop**
 
-Zip the `tdt4240-software-architecture` folder (the zip must contain the folder with
-`SKILL.md` at its top level) and upload it under *Settings → Capabilities → Skills*.
+Zip the folder so that the zip contains `software-architect/SKILL.md` at its top level, then
+upload it under *Settings → Capabilities → Skills*.
 
 ```sh
 cd tdt4240-software-architecture-skill
-zip -r tdt4240-software-architecture.zip tdt4240-software-architecture
+zip -r software-architect.zip software-architect
 ```
 
-Claude picks the skill up automatically when a question matches its description; you
-can also ask for it by name.
+Claude picks the skill up when a request matches its description; you can also ask for it
+by name.
 
-## Example prompts
+## File map
 
-- "Write a six-part availability scenario for our libGDX multiplayer game and list the
-  tactics that achieve it."
-- "Give me the full modifiability tactic tree and one tradeoff for each group."
-- "Which pattern fits best: a system where sensor readings are transformed in a fixed
-  sequence of steps? Why not Pub-Sub?"
-- "Explain the difference between a view, a viewpoint and a structure (IEEE 1471 vs SAiP)."
-- "Review the process view in our architecture document. Is it consistent with the
-  logical view?"
-- "We are evaluating another group with ATAM. Help us build the utility tree and find
-  sensitivity and tradeoff points."
-- "Quiz me on TDT4240 exam-style short questions and mark my answers."
-- "What changed in the QA chapters between the 3rd and 4th edition of SAiP?"
+Paths under `references/` and `templates/` are inside `software-architect/`.
 
-Test prompts with expected behaviour are in [`evals/evals.json`](evals/evals.json).
+| Path | Contents |
+|---|---|
+| `software-architect/SKILL.md` | Stance, mode selection, evidence rules, build/review/document/enforce procedures, finding format, terminology, reference index |
+| `references/design-workflow.md` | ASRs, question bank, six-part scenarios, utility tree, ADD 3.0, tradeoff reasoning, anti-overengineering, architecture debt |
+| `references/quality-attributes-runtime.md` | Availability, performance, security, safety, energy efficiency, usability: scenarios, tactics, code signals |
+| `references/quality-attributes-change.md` | Modifiability, testability, deployability, integrability, cross-QA tradeoff matrix |
+| `references/architectural-patterns.md` | Classic and practitioner patterns with code signatures, erosion signals, selection guide, anti-patterns |
+| `references/design-patterns-in-code.md` | GoF and related in-process patterns as tactic carriers |
+| `references/module-layout-and-interfaces.md` | Package layouts, allowed-dependency tables, interface design, skeletons in several languages, migration recipe |
+| `references/fitness-functions.md` | Enforcement ladder, architecture tests per ecosystem, ratchets, CI wiring |
+| `references/architecture-recovery-and-metrics.md` | Dependency graphs, reflexion models, Martin metrics, git-history hotspots |
+| `references/review-playbook.md` | Smell catalogue, PR checklist, finding rules, severity rubric, worked example |
+| `references/evaluation-methods.md` | Mini-ATAM, ATAM, lightweight evaluation, CBAM |
+| `references/documentation.md` | ISO/IEC/IEEE 42010, Views and Beyond, 4+1, arc42, C4, ADRs, docs-as-code |
+| `references/platforms-and-domains.md` | Cloud, containers, mobile, edge/IoT, ML-enabled, quantum, games and real-time |
+| `templates/adr.md` | ADR with a mandatory "Enforced by" field, plus a filled example |
+| `templates/architecture-description.md` | Design brief and lean arc42/C4/42010 architecture description |
+| `templates/architecture-review-report.md` | PR and repository review reports |
+| `software-architect/CREDITS.md` | Sources, attribution and licence notes |
+| `evals/evals.json` | Practitioner prompts with expected behaviour, for testing the skill |
+
+## Grounded in TDT4240
+
+The theoretical backbone is the syllabus of NTNU's course TDT4240 Software Architecture:
+Bass, Clements and Kazman, *Software Architecture in Practice* (4th ed., 2021, with 3rd-ed.
+chapter numbers where topics moved), with quality attributes, six-part scenarios and
+tactics, architectural and design patterns, Views and Beyond, Kruchten's 4+1 view model,
+IEEE 1471 / ISO/IEC/IEEE 42010, ATAM and CBAM, and the chapters on cloud, mobile and
+edge systems. The skill turns that material into working procedures for real codebases,
+adding practitioner tools the syllabus does not cover: ADRs, C4, arc42, fitness functions
+and behavioural code analysis. This repository started as a study companion for the course
+and was rewritten as a practitioner skill. It is not affiliated with or endorsed by NTNU.
 
 ## Credits
 
-Based in part on the **Wikipendium TDT4240 Software Architecture compendium**
-(<https://www.wikipendium.no/TDT4240_Software_Architecture>; page history
-<https://www.wikipendium.no/TDT4240_Software_Architecture/history/>; version last
-modified 11 January 2022), licensed CC BY-SA 3.0, written by: matsbyr, agavaa, forbord, hoanghn, Gustav Dyngeseth, sindrsb, Myau,
-bujordet, thormartin91, iverjo, finninde, Esso, torbjoks, nina, hoyby, henloef,
-larsekje, mariufa, haakonmt, simenkj, sklirg, Andreas Melzer, loremipsum,
-balazsorban, mathierl. The compendium text has been paraphrased, restructured,
-corrected against the textbook and extended; it is not reproduced verbatim.
-The same attribution ships inside the skill folder as
-[`tdt4240-software-architecture/CREDITS.md`](tdt4240-software-architecture/CREDITS.md),
-so installed copies keep it.
+Parts of the theory are adapted and paraphrased from the Wikipendium compendium
+[TDT4240: Software Architecture](https://www.wikipendium.no/TDT4240_Software_Architecture)
+(CC BY-SA 3.0). Its contributors, as listed on the page: matsbyr, agavaa, forbord,
+hoanghn, Gustav Dyngeseth, sindrsb, Myau, bujordet, thormartin91, iverjo, finninde, Esso,
+torbjoks, nina, hoyby, henloef, larsekje, mariufa, haakonmt, simenkj, sklirg, Andreas
+Melzer, loremipsum, balazsorban, mathierl.
 
-The approach to writing an architecture description (stakeholders and concerns,
-viewpoints, views and rationale in the IEEE 1471 / ISO 42010 style) draws on the
-wallywallet architecture documentation merge request
-<https://gitlab.com/wallywallet/wallet/-/merge_requests/853>, used as a worked
-real-world example in `references/documentation.md`.
+The architecture-description approach (AS-IS/TO-BE discipline, view map, ranked quality
+goals with a conflict rule, intended vs actual layering, embodied vs proposed ADRs,
+executable architecture rules) draws on the Wally wallet architecture description in
+[wallywallet/wallet MR !853](https://gitlab.com/wallywallet/wallet/-/merge_requests/853).
 
 Primary literature:
 
 - Len Bass, Paul Clements, Rick Kazman. *Software Architecture in Practice*, 4th ed.,
-  Addison-Wesley, 2021 (3rd ed. 2013 mapped where chapter numbers differ).
-- Paul Clements et al. *Documenting Software Architectures: Views and Beyond*,
-  2nd ed., Addison-Wesley, 2010.
+  Addison-Wesley, 2021 (3rd ed. 2013).
+- Paul Clements et al. *Documenting Software Architectures: Views and Beyond*, 2nd ed.,
+  Addison-Wesley, 2010.
 - Philippe Kruchten. "The 4+1 View Model of Architecture." *IEEE Software* 12(6), 1995.
-- IEEE Std 1471-2000, *Recommended Practice for Architectural Description of
-  Software-Intensive Systems*, and its successor ISO/IEC/IEEE 42010.
-- James O. Coplien. "Software Design Patterns: Common Questions and Answers." In
-  *The Patterns Handbook*, Cambridge University Press, 1998.
-- Andrew Rollings, Dave Morris. *Game Architecture and Design: A New Edition*,
-  New Riders, 2004, ch. 17.
+- ISO/IEC/IEEE 42010 and its predecessor IEEE Std 1471-2000.
 - Rick Kazman, Mark Klein, Paul Clements. *ATAM: Method for Architecture Evaluation*,
   CMU/SEI-2000-TR-004, 2000.
-- Erich Gamma, Richard Helm, Ralph Johnson, John Vlissides. *Design Patterns*,
-  Addison-Wesley, 1994.
+- Humberto Cervantes, Rick Kazman. *Designing Software Architectures: A Practical
+  Approach*, Addison-Wesley, 2016.
+- Neal Ford, Rebecca Parsons, Patrick Kua. *Building Evolutionary Architectures*,
+  O'Reilly, 2017.
+- Michael Nygard. "Documenting Architecture Decisions", 2011; Simon Brown, the C4 model;
+  Gernot Starke and Peter Hruschka, arc42.
+- David L. Parnas, "On the Criteria To Be Used in Decomposing Systems into Modules", 1972;
+  Robert C. Martin's package metrics; Adam Tornhill, *Your Code as a Crime Scene*; Murphy,
+  Notkin and Sullivan, software reflexion models, 1995.
+- James O. Coplien, "Software Design Patterns: Common Questions and Answers", 1998;
+  Rollings and Morris, *Game Architecture and Design*; Robert Nystrom, *Game Programming
+  Patterns*.
+
+The full list with details is in [`software-architect/CREDITS.md`](software-architect/CREDITS.md).
+Textbook and article titles are cited for reference only; no copyrighted text from them is
+included.
+
+Author: Jørgen S. Notland ([github.com/jQrgen](https://github.com/jQrgen)).
 
 ## License
 
-This repository is licensed under
-[Creative Commons Attribution-ShareAlike 4.0 International](LICENSE) (CC BY-SA 4.0).
-It is an adaptation of CC BY-SA 3.0 material from Wikipendium; licensing the adaptation
-under a later version of the same license is permitted by CC BY-SA 3.0 §4(b). If you
-share or adapt it, credit the Wikipendium authors and this repository and keep the
-same license.
-
-Textbook and article titles are cited for reference only; no copyrighted text from them
-is included.
-
-## Author
-
-Jørgen S. Notland ([github.com/jQrgen](https://github.com/jQrgen))
+[Creative Commons Attribution-ShareAlike 4.0 International](LICENSE) (CC BY-SA 4.0). This
+repository is an adaptation of CC BY-SA 3.0 material from Wikipendium; licensing the
+adaptation under a later version of the same license is permitted by CC BY-SA 3.0. If you
+share or adapt it, credit the Wikipendium authors and this repository and keep the same
+license.
