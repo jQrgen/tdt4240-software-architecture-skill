@@ -2,14 +2,11 @@
 
 > **The official template takes precedence.** If the TDT4240 course staff publish an ATAM
 > template or assignment text (Blackboard or the course page), follow its headings, order and
-> page limits. Use this file only as a fill-in aid and a completeness check. Method background:
-> `../references/evaluation.md`. QA scenarios and tactics: `../references/quality-attributes-classic.md`
-> and `../references/quality-attributes-4th-edition.md`. Patterns: `../references/architectural-patterns.md`.
+> page limits. Use this file only as a fill-in aid and a completeness check. Method: [../references/evaluation.md](../references/evaluation.md). Scenarios and tactics: [../references/quality-attributes-classic.md](../references/quality-attributes-classic.md), [../references/quality-attributes-4th-edition.md](../references/quality-attributes-4th-edition.md). Patterns: [../references/architectural-patterns.md](../references/architectural-patterns.md).
+> Evaluated documents usually follow [requirements-document.md](requirements-document.md) and [architecture-document.md](architecture-document.md).
 
-How to use: replace every `<...>` placeholder, delete the guidance quotes (`>`) before handing in,
-and keep scenario IDs identical to the evaluated group's requirements document (for example M1, P2).
-Example rows marked *(example)* describe a fictional Firebase-backed multiplayer libGDX game;
-delete them in your document.
+How to use: replace every `<...>`, delete guidance quotes (`>`) and *(example)* rows (a fictional
+Firebase-backed libGDX game), and keep scenario IDs identical to the evaluated group's (e.g. M1, P2).
 
 ---
 
@@ -29,9 +26,9 @@ delete them in your document.
 ## 2. Evaluation method
 
 ATAM (Architecture Tradeoff Analysis Method; Kazman, Klein & Clements, CMU/SEI-2000-TR-004;
-SAiP ch. 21 in both the 3rd and 4th editions) analyses an architecture against prioritised
-quality-attribute scenarios. Its outputs are risks, non-risks, sensitivity points, tradeoff
-points and risk themes. The nine steps:
+SAiP 4th ed. ch. 21; 3rd ed. also ch. 21) analyses an architecture against prioritised quality-attribute
+scenarios. Its outputs include the prioritised scenarios (utility tree), a mapping of architectural
+approaches to QAs, risks and non-risks, sensitivity and tradeoff points, and risk themes. The nine steps:
 
 | # | Step | How we did it |
 |---|---|---|
@@ -45,9 +42,7 @@ points and risk themes. The nine steps:
 | 8 | Analyse architectural approaches (again) | <new high-priority scenarios from step 7> |
 | 9 | Present results | <report + any meeting> |
 
-**Deviations from full ATAM:** <e.g. no separate stakeholder phase (phase 2) because the only
-stakeholders present were the two groups; the evaluated group did not present live, so steps 2-3
-were done from their documents; time-boxed to <n> hours>.
+**Deviations from full ATAM:** <e.g. no separate stakeholder phase (only the two groups took part); steps 2-3 done from their documents; time-boxed to <n> hours>.
 
 ## 3. Business drivers and summary of the evaluated architecture
 
@@ -69,14 +64,14 @@ were done from their documents; time-boxed to <n> hours>.
 | A1 | <e.g. MVC> | Architectural pattern | <section / view> | <modifiability> |
 | A2 | <e.g. State pattern for screens> | Design pattern | <section> | <modifiability> |
 | A3 | <e.g. Encapsulate backend behind an interface> | Tactic (reduce coupling) | <section> | <modifiability, testability> |
-| A1 *(example)* | Direct calls from game controllers to the Firebase SDK | (absence of a tactic) | Logical view | Modifiability (claimed) |
+| A4 *(example)* | Direct calls from game controllers to the Firebase SDK | (absence of a tactic) | Logical view | Modifiability (claimed) |
 
 > Keep tactics and patterns apart: a tactic targets one QA response; a pattern bundles tactics.
 
 ## 5. Utility tree
 
-Rating: (business importance, technical difficulty), each H/M/L. Scenarios rated (H,H) or (H,M)
-are analysed in section 6.
+Rating: (business importance, technical difficulty), each H/M/L. Scenarios rated highest, typically
+(H,H), then (H,M)/(M,H), are analysed in section 6 as time permits; state the cutoff we used.
 
 | Quality attribute | Refinement | Scenario (ID + short text) | (Importance, Difficulty) |
 |---|---|---|---|
@@ -95,7 +90,7 @@ are analysed in section 6.
 | Attribute(s) | <QA> |
 | Architectural approaches | <A-numbers from section 4> |
 | Sensitivity points | <S-n: property of one or more components critical to this response> |
-| Tradeoff points | <T-n: a property that affects several QAs in opposite directions> |
+| Tradeoff points | <T-n: a property that is a sensitivity point for more than one QA (typically improving one while degrading another)> |
 | Risks | <R-n: decision that may cause an undesired QA response> |
 | Non-risks | <N-n: decision judged sound for this scenario, with the assumption it relies on> |
 | Reasoning | <why; refer to views, diagrams, tactic names> |
@@ -105,21 +100,23 @@ are analysed in section 6.
 | Field | Content |
 |---|---|
 | Scenario ID | M1 |
-| Architectural approaches | A1 |
+| Scenario (six parts) | Source: developer / Stimulus: replace Firebase with another backend / Artifact: backend access code / Environment: design time / Response: change made and tested / Response measure: <= <n> person-days, only backend module changed |
+| Attribute(s) | Modifiability |
+| Architectural approaches | A4 |
 | Sensitivity points | S1: number of classes that import Firebase SDK types |
-| Tradeoff points | T1: calling Firebase directly avoids an adapter layer (slightly simpler, less overhead: performance/cost to build) but spreads backend coupling (modifiability, testability) |
+| Tradeoff points | T1: calling the Firebase SDK directly (no adapter layer) removes one level of indirection, slightly better for performance, but spreads backend coupling across controllers, worse for modifiability and testability |
 | Risks | R1: a single Firebase dependency without an abstraction threatens the modifiability goal M1; replacing the backend would touch every controller |
 | Non-risks | N1: using Firebase realtime listeners for sync is adequate for turn-based play (assumes fewer than <n> updates/s) |
 | Reasoning | The logical view shows controllers calling the Firebase SDK directly; no backend interface or intermediary (reduce-coupling tactics) is present |
 
 ## 7. Brainstormed scenarios and prioritisation
 
-| ID | Scenario | QA | Votes | In utility tree already? | Analysed in step 8? |
+| ID | Type (use case / growth / exploratory) and scenario | QA | Votes | In utility tree already? | Analysed in step 8? |
 |---|---|---|---|---|---|
-| B1 | <> | <> | <n> | <yes/no (ID)> | <yes/no> |
+| B<n> | <type>: <> | <> | <n> | <yes/no (ID)> | <yes/no> |
+| B1 *(example)* | Growth: add a 4-player mode after delivery | Modifiability | 5 | yes (M1) | no |
 
-> Voting rule used: <e.g. each participant gets votes equal to 30% of the scenario count, rounded up>.
-> Explain how brainstormed scenarios compare with the utility tree (new drivers? missed QAs?).
+> Voting rule used: <e.g. about 30% of the scenario count per participant, rounded up, as SAiP suggests; verify>. Compare with the utility tree: new drivers? missed QAs?
 
 ## 8. Consolidated findings
 
@@ -148,6 +145,9 @@ are analysed in section 6.
 |---|---|---|
 | T<n> | <> | <e.g. modifiability vs performance> |
 
+> A tradeoff point is a decision that is a sensitivity point for two or more QAs in opposite directions;
+> name the QA and the response for every S and T entry (see [../references/evaluation.md](../references/evaluation.md), section 2.5).
+
 ## 9. Risk themes and impact on business drivers
 
 | Theme | Risks grouped | Business driver threatened | Impact |
@@ -158,7 +158,7 @@ are analysed in section 6.
 
 | # | Recommendation | Addresses | Suggested tactic / pattern | Effort (H/M/L) |
 |---|---|---|---|---|
-| 1 *(example)* | Introduce a backend interface (e.g. `GameBackend`) with a Firebase implementation, created by a factory | R1, M1 | Encapsulate; use an intermediary; Abstract Factory | M |
+| 1 *(example)* | Introduce a backend interface (e.g. `GameBackend`) with a Firebase implementation, created by a factory | R1, M1 | Encapsulate; use an intermediary (adapter/interface); Factory Method or simple factory (Abstract Factory only if several related backend services are swapped together) | M |
 | <n> | <> | <> | <> | <> |
 
 > Recommend; do not redesign their system. Point to document gaps separately from design risks.
@@ -176,4 +176,4 @@ are analysed in section 6.
 - Kazman, R., Klein, M., Clements, P. *ATAM: Method for Architecture Evaluation*. CMU/SEI-2000-TR-004, 2000.
   https://insights.sei.cmu.edu/library/atam-method-for-architecture-evaluation/
 - Bass, L., Clements, P., Kazman, R. *Software Architecture in Practice*, 4th ed., Addison-Wesley, 2021
-  (ch. 21, Evaluating an Architecture; 3rd ed. 2013, also ch. 21). Add any other sources you used.
+  (4th ed. ch. 21, "Evaluating an Architecture"; 3rd ed. 2013, ch. 21, "Architecture Evaluation"). Add any other sources you used.

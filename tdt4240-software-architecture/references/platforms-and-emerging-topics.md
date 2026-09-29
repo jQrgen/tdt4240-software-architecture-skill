@@ -2,20 +2,24 @@
 
 Covers cloud, virtualization, distributed computing, mobile, edge-dominant systems, software interfaces, quantum computing and the architect's role, plus a note on machine learning.
 
-**Chapter numbers.** *Software Architecture in Practice* (SAiP) by Bass, Clements & Kazman: the 4th ed. (2021) is current, and the 3rd ed. (2013) is the one used by Wikipendium and by the public 2015/2016 exams. Which edition TDT4240 uses today is **unconfirmed** (see `course-and-project-guide.md`). Give both numbers when you answer.
+**Chapter numbers.** *Software Architecture in Practice* (SAiP) by Bass, Clements & Kazman: the 4th ed. (2021) is current, and the 3rd ed. (2013) is the one used by Wikipendium and by the public 2015/2016 exams. Which edition TDT4240 uses today is **unconfirmed** (see [course-and-project-guide](course-and-project-guide.md)). Give both numbers when you answer.
 
 | Topic | 3rd ed. | 4th ed. | Exam signal |
 |---|---|---|---|
 | Cloud | ch. 26 "Architecture in the Cloud" | ch. 17 "The Cloud and Distributed Computing" | 2015 exam: cloud deployment models and basic mechanisms |
 | Virtualization | (part of ch. 26) | ch. 16 "Virtualization" | none public |
 | Software interfaces | (no chapter) | ch. 15 "Software Interfaces" | none public |
-| Mobile systems | (touched on under "other QAs": mobility) | ch. 18 "Mobile Systems" | none public; relevant to the Android project |
+| Mobile systems | (ch. 12 "Other QAs": mobility) | ch. 18 "Mobile Systems" | none public; relevant to the Android project |
 | Edge-dominant systems | ch. 27 "Architectures for the Edge" | **not in 4th ed.** | 2015 exam: a question on edge-dominant systems |
 | Quantum computing | (none) | ch. 26 "A Glimpse of the Future: Quantum Computing" | low |
-| Role of architects in projects | parts of ch. 3, 22 | ch. 24 | low to medium |
+| Role of architects in projects | related material in ch. 3 (contexts), ch. 15 (agile), ch. 22 (management & governance); no dedicated chapter | ch. 24 | low to medium |
 | Machine learning | none | **none** | not a confirmed syllabus topic |
 
-Related files: QA tactics for availability and performance are in `quality-attributes-classic.md` and `quality-attributes-4th-edition.md`. Allocation patterns (Map-Reduce, Multi-tier) and Client-Server/SOA are in `architectural-patterns.md`. Deployment and allocation views are in `documentation.md`.
+Related files: QA tactics for availability and performance are in [quality-attributes-classic](quality-attributes-classic.md) and [quality-attributes-4th-edition](quality-attributes-4th-edition.md). Map-Reduce, Multi-tier, Client-Server and SOA are in [architectural-patterns](architectural-patterns.md). Deployment and allocation views are in [documentation](documentation.md).
+
+For how to write a cloud or edge essay answer under time pressure, see [exam-prep](exam-prep.md) (essay structure and flashcards).
+
+Cross-links: [foundations](foundations.md) · [quality-attributes-classic](quality-attributes-classic.md) · [quality-attributes-4th-edition](quality-attributes-4th-edition.md) · [architectural-patterns](architectural-patterns.md) · [documentation](documentation.md) · [exam-prep](exam-prep.md) · [course-and-project-guide](course-and-project-guide.md)
 
 ---
 
@@ -76,7 +80,7 @@ Wikipendium files auto-scaling under *Availability* and "failure is common" unde
 
 | QA | Cloud-specific point | Tactics / mechanisms |
 |---|---|---|
-| **Performance / scalability** | Load varies. **Auto-scaling** adds or removes instances to follow demand (horizontal scaling = elasticity). Shared resources and the network add latency | Load balancer, maintain multiple copies of computations (server pool), caching, scale out |
+| **Performance / scalability** | Load varies. **Auto-scaling** adds or removes instances to follow demand (horizontal scaling = elasticity). Shared resources and the network add latency. | Tactic *maintain multiple copies of computations* (server pool), realised by the **Load Balancer** pattern (4th ed. ch. 9, a pattern, not a tactic); caching (maintain multiple copies of data); scale out |
 | **Availability** | Failure is **frequent** at data-centre scale. The platform itself must be available, and applications must **detect** failures and **recover** from them | Heartbeat or health checks, redundancy across hosts or zones, retry, timeouts, state kept outside the instances so a failed one can be replaced |
 | **Security** | Multi-tenancy and hosting on third-party infrastructure increase risk (shared hardware, provider access, data location or jurisdiction) | Separate entities (VM isolation), encrypt data, authenticate and authorize actors, audit trail |
 | **Cost / measured service** | Pay per use, so architecture choices become running costs | Scale in when idle, choose the right service model |
@@ -84,8 +88,8 @@ Wikipendium files auto-scaling under *Availability* and "failure is common" unde
 ### 1.5 Example technologies (3rd ed.)
 
 - **HDFS** (Hadoop Distributed File System). Stores very large files split into blocks that are replicated across nodes. It is built to tolerate node failure: availability through replication.
-- **NoSQL databases.** Key-value, document, column-family and graph stores. They give up some relational guarantees (joins, strict consistency) in exchange for horizontal scalability and a flexible schema. They connect to the CAP / consistency trade-off; see the 4th-ed. state discussion below.
-- **MapReduce.** A programming model and framework: *map* over partitioned data in parallel, then *reduce* to combine the results. The framework handles scheduling, distribution and re-running failed tasks. It is the **Map-Reduce allocation pattern** in `architectural-patterns.md`.
+- **NoSQL databases.** Key-value, document, column-family and graph stores. They give up some relational guarantees (joins, strict consistency) in exchange for horizontal scalability and a flexible schema. They connect to the CAP trade-off: under a network partition a distributed store must choose between consistency and availability. See also state management in §1.6.
+- **MapReduce.** A programming model and framework: *map* over partitioned data in parallel, then *reduce* to combine the results. The framework handles scheduling, distribution and re-running failed tasks. In the 3rd ed. it is classed as an **allocation pattern** (ch. 13); in the 4th ed. it is presented as a **performance pattern** (ch. 9). See [architectural-patterns](architectural-patterns.md#41-map-reduce).
 
 ### 1.6 4th-edition additions (ch. 17, distributed computing)
 
@@ -93,7 +97,7 @@ Know these concepts. The exact subsection names are **unverified**, so check the
 
 | Concept | Gist | QA link |
 |---|---|---|
-| **Load balancer** | An intermediary that spreads requests over a pool of identical instances and stops sending to unhealthy ones (health checks) | Performance, availability |
+| **Load balancer** (4th-ed. performance pattern, ch. 9) | An intermediary that spreads requests over a pool of identical instances and stops sending to unhealthy ones (health checks) | Performance, availability |
 | **Autoscaling** | Monitors load (CPU, queue length, request rate) and creates or destroys instances automatically. New instances need time to start, so scaling lags behind demand | Performance, cost |
 | **Timeouts** | In a distributed system you cannot tell a slow service from a dead one. A timeout turns "no answer" into a detectable failure that you can retry or fail over | Availability |
 | **Long-tail latency** | With many servers, a small fraction of requests are much slower than the median. A request that fans out to many servers is only as fast as its slowest reply. Mitigations: send hedged or duplicate requests and take the first reply, set timeouts, avoid overloaded instances | Performance |
@@ -103,6 +107,8 @@ Know these concepts. The exact subsection names are **unverified**, so check the
 - Network calls to the backend need timeouts and a plan for offline use.
 - Keep game state authoritative in one place.
 - Put the backend behind an interface so it could be swapped (modifiability, testability).
+
+Exam essay on cloud: use the structure in [exam-prep](exam-prep.md).
 
 ---
 
@@ -133,12 +139,12 @@ Architectural points:
 **[verify against the book]** The chapter's structure is summarised from general knowledge. Answer at this level and do not quote specifics.
 
 - **Interface.** The boundary through which elements interact. It is what an element *provides* (and *requires*) and what others may assume about it. Everything behind it is hidden (encapsulation / information hiding, Parnas).
-- **Resources and operations.** An interface exposes resources (data, services) and the operations on them, with syntax (signatures, message formats) and semantics (pre- and post-conditions, effects, QA properties such as latency).
+- **Resources and operations.** An interface exposes resources (data, services) and the operations, events and properties through which they are used; one element may provide several interfaces (e.g. one per client role) [verify]. Each is specified with syntax (signatures, message formats) and semantics (pre- and post-conditions, effects, QA properties such as latency).
 - **Interaction styles.** Examples are call-return / RPC and REST-style resource operations versus asynchronous messaging and events. Choose based on coupling, latency and failure behaviour.
 - **Data representation.** Exchange formats (e.g. JSON, XML, binary schemas) and their effect on size, performance and evolvability.
 - **Error handling.** Make errors part of the contract: error codes or exceptions, what the caller must do (retry? idempotent?), and behaviour on timeout. This connects to availability tactics.
 - **Versioning / evolution.** Interfaces outlive implementations. Options: keep backward-compatible changes only (add, never remove), run several versions side by side, deprecate with a schedule. This connects to modifiability and integrability.
-- **Documenting an interface.** In the Views & Beyond style: identity, resources provided (syntax and semantics), data types, error handling, variability, QA characteristics, rationale, usage guide. Cross-link `documentation.md`.
+- **Documenting an interface.** In the Views & Beyond style: identity, resources provided (syntax and semantics), data types, error handling, variability, QA characteristics, rationale, usage guide. Cross-link [documentation](documentation.md).
 
 Course link: the backend-abstraction interface (e.g. a `DatabaseService` or `NetworkAPI` interface in `core`, implemented per platform or backend) is a design decision about interfaces that you can argue for with modifiability and testability.
 
@@ -157,7 +163,7 @@ Most relevant to TDT4240, because the project is an **Android game in libGDX**. 
 | **Lifecycle** | The OS can pause, background or kill the app at any time | Save state on pause, restore on resume, and never assume you keep running | libGDX `ApplicationListener.pause()/resume()/dispose()`; the game state manager |
 | **Deployment and updates** | Distribution goes through app stores (review delays); users may not update; many OS versions and screen sizes | Backward-compatible backend APIs, feature flags or server-side config, version checks | Keep the backend schema compatible with older clients |
 
-Exam or report angle: mobility was listed as an "other QA" in 3rd ed. ch. 12 (battery, intermittent connectivity). In the 4th ed. it has its own chapter, and energy efficiency has its own QA chapter (ch. 6). See `quality-attributes-4th-edition.md`.
+Exam or report angle: mobility was listed as an "other QA" in 3rd ed. ch. 12 (battery, intermittent connectivity). In the 4th ed. it has its own chapter, and energy efficiency has its own QA chapter (ch. 6). See [quality-attributes-4th-edition](quality-attributes-4th-edition.md).
 
 ---
 
@@ -179,7 +185,7 @@ Three concentric rings:
 | **Periphery** | Many loosely coordinated developers and contributors | Build on the core: plug-ins, apps, extensions, patches, content-producing tools. They are often volunteers and self-selected |
 | **Masses** | End users (prosumers) | Use the system **and** contribute content, bug reports, data and feature requests |
 
-The Metropolis model is set against the traditional, centrally controlled **waterfall/V-style** view of development. Kazman & Chen also state a set of Metropolis principles. **Do not list them from memory**; point students to the book if an exam asks for them.
+The Metropolis model is contrasted with **traditional lifecycle models**, which assume a centrally managed organisation and a bounded set of requirements [verify the exact list of models in 3rd ed. ch. 27]. Source article [verify]: Kazman, R. & Chen, H.-M. (2009), "The Metropolis Model: A New Logic for Development of Crowdsourced Systems", *Communications of the ACM* 52(7). Kazman & Chen also state a set of Metropolis principles. **Do not list them from memory**; point students to the book if an exam asks for them.
 
 ### 5.2 How edge-dominant development differs
 
@@ -197,11 +203,13 @@ Architectural implications to state in an answer:
 - Also invest in **scalability and availability**, because many unknown users and contributors arrive.
 - **Architect the core, enable the periphery**: you cannot specify everything, so specify the platform and its rules.
 
+Exam essay on edge-dominant systems: use the structure in [exam-prep](exam-prep.md).
+
 ---
 
 ## 6. Quantum computing (4th ed. ch. 26), lower exam relevance
 
-It is the last chapter of the 4th ed. and titled "A Glimpse of the Future". Expect a definition-level question at most.
+It is the last chapter of the 4th ed. and titled "A Glimpse of the Future". Expect a definition-level question at most. The chapter's subsection structure is **unverified**; the bullets below are standard concepts at the level the chapter treats them.
 
 - **Qubit.** The quantum analogue of a bit. It can be in a **superposition** of |0> and |1>, described by complex amplitudes.
 - **Measurement.** Reading a qubit collapses it to 0 or 1, with probabilities given by the amplitudes. Results are therefore **probabilistic**, and algorithms are run repeatedly or designed so that the wanted answer has high probability. Measurement destroys the superposition, so intermediate state cannot be inspected the way it can in classical debugging.
@@ -240,7 +248,7 @@ It is the last chapter of the 4th ed. and titled "A Glimpse of the Future". Expe
 
 In **agile** projects this means incremental, just-in-time architecture: enough up-front design to address the high-risk ASRs, then refinement per iteration. In **distributed development** the architecture determines how work can be split across teams, so module boundaries become coordination boundaries (Conway's law).
 
-TDT4240 link: the group's development view should support dividing work among members (teacher feedback, see `course-and-project-guide.md`), and someone should own consistency between the code and the architecture document. The chapter's exact subsection structure is **unverified**. Related 3rd-ed. material is in ch. 22 (management and governance), ch. 15 (agile) and ch. 24 (competence), which is now 4th-ed. ch. 25.
+TDT4240 link: the group's development view should support dividing work among members (teacher feedback, see [course-and-project-guide](course-and-project-guide.md)), and someone should own consistency between the code and the architecture document. The chapter's exact subsection structure is **unverified**. Related 3rd-ed. material is in ch. 22 (management and governance), ch. 15 (agile) and ch. 24 (competence), which is now 4th-ed. ch. 25.
 
 ---
 
@@ -252,5 +260,7 @@ TDT4240 link: the group's development view should support dividing work among me
 - [ ] Contrast VM, container and serverless in one sentence each.
 - [ ] Define **edge-dominant**, which is not edge computing; draw the core, periphery and masses rings; contrast requirements, development, testing and releases.
 - [ ] Mobile: energy, connectivity, sensors, resources, lifecycle, updates, each tied to the libGDX project.
+- [ ] Interfaces: resources/operations, errors as part of the contract, versioning strategies (4th ed. ch. 15).
+- [ ] Architect vs project manager; architect's lifecycle duties; agile and distributed development (4th ed. ch. 24).
 - [ ] Quantum: qubit, superposition, measurement, coprocessor, and Shor's threat to cryptography.
 - [ ] ML: say plainly that it is outside the SAiP syllabus.

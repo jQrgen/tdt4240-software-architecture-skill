@@ -57,9 +57,9 @@ practised through the project.
 
 | Period | Exam / project | Exam form and aids |
 |---|---|---|
-| About 2008-2011 | about 70 / 30 | Written exam (Wang's ACM TOCE paper) |
+| About 2008-2011 | about 70 / 30 | Written exam (Wang's ACM TOCE paper, see section 7) |
 | 2015-2016 | (papers public) | 4 h written. Aids: printed IEEE 1471-2000 and Kruchten 1995, dictionary, simple calculator |
-| 2020 | 40 / 60 | See the 2020 course page |
+| 2020 | 40 / 60 | Exam form not checked here; see the 2020 course page |
 | 2021 | 40 / 60 | 4 h **home** exam |
 | 2022-2024 | 40 / 60 | 4 h school exam in Inspera, aid code A (all printed and handwritten material) |
 | 2025 onward | 50 / 50 | 4 h school exam in Inspera, digital appendix only |
@@ -107,12 +107,28 @@ Exact exercise texts vary by year. Treat the list as typical, not mandatory.
 | Requirements document | Game concept, functional requirements, QA scenarios, COTS and technical constraints, issues, changes, individual contributions | [../templates/requirements-document.md](../templates/requirements-document.md) |
 | Architecture document | Drivers/ASRs, stakeholders and concerns, viewpoints, tactics, patterns, 4+1 views, consistency, rationale, issues, changes, contributions | [../templates/architecture-document.md](../templates/architecture-document.md) |
 | ATAM evaluation | Evaluate **another** group's architecture (the 2022 Ronaslice repo mentions peer review by two groups) | [../templates/atam-evaluation.md](../templates/atam-evaluation.md), [evaluation.md](evaluation.md) |
-| Implementation document / testing | Test the functional and quality requirements; evaluate how well the code matches the architecture | [documentation.md](documentation.md) |
+| Implementation document / testing | Test the functional and quality requirements; evaluate how well the code matches the architecture (see the bullets below) | QA scenarios as test cases: [quality-attributes-classic.md](quality-attributes-classic.md); code/architecture consistency: [requirements-and-design.md](requirements-and-design.md) §9 (also [documentation.md](documentation.md) §7) |
 | Post-mortem (historically) | Post-mortem analysis (Wang & Stålhane 2005); not confirmed as a current deliverable | - |
+
+For the implementation document / testing deliverable:
+
+- Test each functional requirement and record the result.
+- Test each QA scenario against its response measure (for example, measure the
+  latency or count the classes changed) and report pass or fail.
+- List where the code deviates from the architecture document, and why.
+
+**Post-mortem analysis (historical phase).** A post-mortem analysis is a
+structured team reflection held after the project ends. The team first
+brainstorms positive and negative experiences, then groups them into themes
+(for example in a KJ session), and finally looks for the root causes of the
+most important themes (for example with an Ishikawa/fishbone diagram). The
+course used it as a project phase in earlier years; it is not confirmed as a
+current deliverable. Check the method details against Wang & Stålhane (2005)
+before relying on them.
 
 **Current deadlines, order and weights come from Blackboard.** Do not guess them.
 
-Historical phase order (Wang's TOCE paper, about 2008-2010): COTS learning ->
+Historical phase order (Wang's TOCE paper, about 2008-2011): COTS learning ->
 design patterns -> requirements and architecture -> ATAM of another group ->
 implementation and testing -> post-mortem.
 
@@ -152,24 +168,25 @@ choices against its own QA goals.
 | Backend access | Backend behind an **interface** defined in `core` (e.g. `BackendApi`), implemented in the `android` module with the Firebase SDK, injected at startup by the Android launcher; a fake or stub for `lwjgl3` and tests | Modifiability (use an intermediary, encapsulate, defer binding), testability (abstract data sources), portability |
 | UI updates | **Observer** (or listener callbacks from the backend) so views react to model or database changes | Modifiability (reduce coupling), performance (no polling) |
 | Object creation | **Factory** for entities, power-ups or screens | Modifiability |
-| Shared services | Asset manager or sound manager, possibly a **Singleton** (note its testability cost) | Performance (reuse loaded assets) |
-| Distribution | **Client-server**: phones as clients, Firebase as the managed server/shared data store | Availability and scalability handled by the managed service |
+| Shared services | Asset manager or sound manager, possibly a **Singleton** (note its testability cost) | Performance (maintain multiple copies of data / caching) |
+| Distribution | **Client-server**: phones as clients, Firebase as the managed server/shared data store | Availability/scalability delegated to the managed service (a COTS constraint, not a tactic of ours); client-side: retry and local caching of last known state (maintain multiple copies of data) |
 
 **Why the interface is necessary, not just nice:** `core` is plain Java/Kotlin
 shared by the desktop and Android launchers, so it cannot depend on Android
 Firebase SDKs directly. The standard solution is an interface in `core`, an
 implementation in `android`, and injection through the `Game` constructor in
 `AndroidLauncher`. This is also a textbook modifiability and testability tactic,
-so say so in the rationale.
+so say so in the rationale. The same interface lets a group swap Firebase for
+Supabase or a fake, which gives a concrete modifiability scenario to write.
 
 ### 4.1 Tactics and patterns per view (4+1)
 
 | View | What to show | Tactics/patterns to point out |
 |---|---|---|
 | Logical | Model, view, controller (or ECS entities, components, systems); screens; the `BackendApi` interface; **external components (Firebase) and server-side data** (collections/nodes, e.g. `lobbies`, `games`, `players`) | MVC/ECS, State, Factory, Observer; encapsulate, use an intermediary |
-| Process | Runtime interactions: game loop (`render()` = update + draw), input -> controller -> model -> view, async backend callbacks, what happens when the opponent moves (sequence diagram) | Observer/pub-sub, client-server; introduce concurrency (async calls), limit event response |
+| Process | Runtime interactions: game loop (`render()` = update + draw), input -> controller -> model -> view, async backend callbacks, what happens when the opponent moves (sequence diagram); backend callbacks arrive on another thread, so marshal them with `Gdx.app.postRunnable` (see [design-and-game-patterns.md](design-and-game-patterns.md)) | Observer/pub-sub, client-server; introduce concurrency (async calls), limit event response |
 | Development | Gradle modules (`core`, `android`, `lwjgl3`), packages (`model`, `view`, `controller`, `backend`), **who owns what** | Layering, restrict dependencies; supports dividing work |
-| Physical | Android device, (desktop for dev), Firebase cloud; **network types** (Wi-Fi/4G/5G, HTTPS/WebSocket to Firebase) | Client-server, multi-tier |
+| Physical | Android device, (desktop for dev), Firebase cloud; **network types** (Wi-Fi/4G/5G; TLS-encrypted WebSocket (Realtime Database) or gRPC over HTTP/2 (Firestore); HTTPS for Cloud Functions/Supabase REST) | Client-server, multi-tier |
 | Scenarios (+1) | Walk one or two QA scenarios through all views | Ties views to the QA goals |
 
 ---
@@ -207,15 +224,16 @@ checklist on any draft a student shares.
 
 ## 6. Grading criteria named historically
 
-From Wang's ACM TOCE paper on the game project (about 2008-2010). Current
-criteria may differ; check the assignment text.
+From Wang's ACM TOCE paper on the game project (about 2008-2011). Current
+criteria may differ; check the assignment text. The criterion names are from
+the paper; the explanations are ours.
 
-| Criterion | What it means in practice |
+| Criterion | How to read it (our interpretation) |
 |---|---|
 | IEEE 1471 completeness | Stakeholders, concerns, viewpoints, views, inconsistencies, rationale all present |
 | Working implementation | The game runs and implements the stated functional requirements |
 | Code-architecture consistency | The code structure matches the documented views; deviations are explained |
-| Readability | Clear writing and diagrams with legends |
+| Structured, readable documentation and structured, readable code | Documents follow a clear structure; code is organised and easy to follow |
 | Testable requirements | QA scenarios have measurable response measures; tests refer to them |
 | Rationale | Decisions are justified against QA goals and alternatives |
 | Template use | The provided document templates are followed |
@@ -236,7 +254,8 @@ scope and format, not to copy content.
 
 Related (unofficial): the libGDX + Firebase interface pattern is demonstrated in
 <https://github.com/AndreasWintherMoen/libgdx-firebase-tutorial>. The course
-paper: A. I. Wang, game project in software architecture course, available at
+paper: A. I. Wang, "Extensive Evaluation of Using a Game Project in a Software
+Architecture Course", *ACM Transactions on Computing Education*, 2011. Preprint:
 <https://folk.idi.ntnu.no/alfw/publications/game-project-in-swa-evaluation_final.pdf>.
 
 ---
@@ -248,6 +267,8 @@ paper: A. I. Wang, game project in software architecture course, available at
 - When asked "what is due when?", answer "check Blackboard", then help with the content.
 - Don't write a group's graded document for them. Review drafts against section 5,
   suggest scenarios and structure, and explain the trade-offs.
-- The course framing of a team building a simple multiplayer mobile game also
-  appears in the Wikipendium compendium. *Adapted from the Wikipendium TDT4240
-  compendium (CC BY-SA 3.0), <https://www.wikipendium.no/TDT4240_Software_Architecture>.*
+- Good practice beyond the historical criteria: give every diagram a legend
+  (notation key), so readers know what boxes and arrows mean.
+- *Course framing paraphrased from the Wikipendium TDT4240 compendium (CC BY-SA
+  3.0, <https://www.wikipendium.no/TDT4240_Software_Architecture>); contributors
+  and licence details in [../CREDITS.md](../CREDITS.md).*

@@ -2,15 +2,9 @@
 
 This file is the detailed reference for the seven classic quality attributes (QAs) in Bass, Clements & Kazman, *Software Architecture in Practice* (SAiP). The last section covers the "other QAs" chapter. The tactic lists follow the **3rd edition (2013)**, which is the version that past TDT4240 exams (2015, 2016) and the Wikipendium compendium cite. The **4th edition (2021)** is the current one. Where it renames or regroups a tactic, this file marks it inline as *(4th ed.: X; verify)*. Those 4th-ed. names come from recall rather than a checked copy of the book, so tell students to check them against their own copy.
 
-Related files, not repeated here:
-- `foundations.md`: definitions of architecture, structures and views, and the tactic vs pattern distinction.
-- `requirements-and-design.md`: ASRs, QAW, utility tree, ADD, and how to write concrete scenarios for the project.
-- `quality-attributes-4th-edition.md`: the new 4th-ed. QA chapters (deployability, energy efficiency, integrability, safety) and the renumbering.
-- `architectural-patterns.md`: which patterns bundle which tactics.
-- `evaluation.md`: ATAM, sensitivity and tradeoff points.
-- `exam-prep.md`: drill questions.
+Related files, not repeated here: [`foundations.md`](foundations.md) (architecture, structures and views, tactic vs pattern); [`requirements-and-design.md`](requirements-and-design.md) (ASRs, QAW, utility tree, ADD, writing concrete scenarios); [`quality-attributes-4th-edition.md`](quality-attributes-4th-edition.md) (deployability, energy efficiency, integrability, safety, renumbering); [`architectural-patterns.md`](architectural-patterns.md) (which patterns bundle which tactics); [`evaluation.md`](evaluation.md) (ATAM, sensitivity and tradeoff points); [`exam-prep.md`](exam-prep.md) (drill questions).
 
-> Parts of this file are adapted from the Wikipendium TDT4240 compendium (CC BY-SA 3.0), https://www.wikipendium.no/TDT4240_Software_Architecture, by its contributors. The text has been paraphrased, restructured, corrected and extended with material from SAiP.
+> Parts of this file are adapted from the Wikipendium TDT4240 compendium (CC BY-SA 3.0), https://www.wikipendium.no/TDT4240_Software_Architecture, by its contributors. The text has been paraphrased, restructured, corrected and extended with material from SAiP. Contributor list and licence details: see [CREDITS.md](../CREDITS.md). Original licensed CC BY-SA 3.0; this adaptation is released under CC BY-SA 4.0.
 
 ## Table of contents
 
@@ -42,7 +36,7 @@ Related files, not repeated here:
 | Testability | 10 | 12 |
 | Usability | 11 | 13 |
 | Other QAs | 12 | 14 ("Working with Other Quality Attributes") |
-| Deployability / Energy efficiency / Safety | (ch. 12, briefly, or absent) | 5 / 6 / 10 |
+| Deployability / Energy efficiency / Safety | Deployability, Safety: brief entries in ch. 12; Energy efficiency: not in 3rd ed. | 5 / 6 / 10 |
 
 Nobody has publicly confirmed which edition TDT4240 uses today. The reading list is in Leganto, which is not publicly visible. Give both chapter numbers when you cite one.
 
@@ -60,10 +54,7 @@ Nobody has publicly confirmed which edition TDT4240 uses today. The reading list
 - A **general scenario** is system-independent. It lists the *allowed values* for each part.
 - A **concrete scenario** picks one value per part for one specific system. It is what goes in the requirements document.
 - A **tactic** is a design decision that influences the response of *one* QA. A **pattern** bundles several tactics and usually affects several QAs.
-
-### Answer template for "explain QA X" questions
-
-Give: (1) the definition, (2) the six-part general scenario, (3) one concrete scenario, (4) the top-level tactic groups and then the tactics, (5) the main tradeoffs.
+- For "explain QA X" questions, use the answer order in the §9 checklist.
 
 ---
 
@@ -74,12 +65,7 @@ Give: (1) the definition, (2) the six-part general scenario, (3) one concrete sc
 ### Definition
 Availability is the property that the software is **there and ready to carry out its task when you need it**. It includes reliability (not failing) and adds **recovery** (coming back after failing). The related umbrella term is **dependability** (Avizienis et al.): the ability to avoid failures that are more frequent or more severe than is acceptable.
 
-Key vocabulary:
-- A **fault** is the cause.
-- An **error** is the intermediate incorrect state.
-- A **failure** is a deviation from specified behaviour that someone outside the system can observe.
-
-Availability tactics aim to stop faults from becoming failures, or to bound the damage and repair it.
+Key vocabulary: a **fault** is the cause; an **error** is the intermediate incorrect state; a **failure** is a deviation from specified behaviour that someone outside the system can observe. Availability tactics aim to stop faults from becoming failures, or to bound the damage and repair it.
 
 ### The formula and the nines
 
@@ -89,10 +75,7 @@ Steady-state availability:
 A = MTBF / (MTBF + MTTR)
 ```
 
-- MTBF is mean time between failures.
-- MTTR is mean time to repair.
-- The formula shows two levers. You can increase MTBF (prevent and mask faults) or decrease MTTR (detect and recover faster). Most tactics work on MTTR.
-- Scheduled downtime may or may not count, so the scenario must say which.
+MTBF is mean time between failures and MTTR is mean time to repair. The formula shows two levers: increase MTBF (prevent and mask faults) or decrease MTTR (detect and recover faster). Most tactics work on MTTR. Scheduled downtime may or may not count, so the scenario must say which.
 
 | Availability | Downtime per year (365 d) | Downtime per 90 days |
 |---|---|---|
@@ -188,17 +171,9 @@ Worked example: MTBF = 1000 h and MTTR = 1 h gives A = 1000/1001, about 99.9%. H
 3rd ed. ch. 6. The 4th ed. replaces it with **Integrability** in ch. 7; see `quality-attributes-4th-edition.md`. Adapted in part from the Wikipendium compendium (CC BY-SA 3.0).
 
 ### Definition
-Interoperability is the degree to which two or more systems can **usefully exchange meaningful information through interfaces** in a particular context.
-- **Syntactic interoperability** is the ability to exchange data: formats and protocols line up.
-- **Semantic interoperability** is the ability to *interpret* the exchanged data correctly: both sides mean the same thing by it.
+Interoperability is the degree to which two or more systems can **usefully exchange meaningful information through interfaces** in a particular context. **Syntactic interoperability** is the ability to exchange data (formats and protocols line up); **semantic interoperability** is the ability to *interpret* it correctly (both sides mean the same thing by it).
 
-A system is never interoperable in isolation, only relative to other systems. The two motivations are:
-- providing a service to other systems, possibly unknown ones;
-- building capabilities by composing existing systems (a system of systems).
-
-The two key concerns are:
-- **Discovery**: the consumer must learn the location, identity and interface of the service, either at runtime or before it.
-- **Handling of the response**: the service can report back to the requester, broadcast the result, or send it on to another system.
+A system is never interoperable in isolation, only relative to other systems. The two motivations are providing a service to other, possibly unknown, systems, and building capabilities by composing existing systems (a system of systems). The two key concerns are **discovery** (the consumer must learn the service's location, identity and interface, at runtime or before) and **handling of the response** (report back to the requester, broadcast the result, or send it on to another system).
 
 ### General scenario (3rd ed.)
 
@@ -249,9 +224,7 @@ The two key concerns are:
 3rd ed. ch. 7 / 4th ed. ch. 8. Adapted in part from the Wikipendium compendium (CC BY-SA 3.0).
 
 ### Definition
-Modifiability is about the **cost and risk of making changes**. Plan for change by asking four questions: **what** can change, how **likely** the change is, **when and by whom** it is made, and what it **costs**. Two design measures drive it:
-- **Cohesion**: how strongly the responsibilities inside a module are related. Aim high.
-- **Coupling**: how likely a change to one module is to spread to another. Aim low. A change that spreads this way is called a *ripple effect*.
+Modifiability is about the **cost and risk of making changes**. Plan for change by asking four questions: **what** can change, how **likely** the change is, **when and by whom** it is made, and what it **costs**. Two design measures drive it: **cohesion** (how strongly the responsibilities inside a module are related; aim high) and **coupling** (how likely a change to one module is to spread to another, a *ripple effect*; aim low).
 
 ### General scenario (3rd ed.)
 
@@ -273,14 +246,14 @@ Modifiability is about the **cost and risk of making changes**. Plan for change 
 | Artifact | Game model / ECS systems and the asset loader |
 | Environment | Design/development time |
 | Response | The power-up is added as a new component and system (or strategy class) plus an asset entry, and tested |
-| Response measure | At most 3 new classes and 0 changed existing classes outside the factory registration; done within 4 person-hours; no regressions in the existing test suite |
+| Response measure | At most 3 new classes; exactly 1 existing file changed (the factory/registry entry); ≤4 person-hours; all existing tests pass |
 
 ### Tactic tree (3rd ed.)
 
 - **Reduce the size of a module**
   - *Split module*: break a large module into smaller ones, so each change touches less code. *(4th ed.: moved under "Increase cohesion"; verify)*
 - **Increase cohesion**
-  - *Increase semantic coherence*: move responsibilities that do not serve the module's purpose to another module, new or existing. *(4th ed.: also "Redistribute responsibilities"; verify)*
+  - *Increase semantic coherence*: move responsibilities that do not serve the module's purpose to another module, new or existing. *(4th ed.: renamed "Redistribute responsibilities"; Increase cohesion then contains Split module and Redistribute responsibilities; verify)*
 - **Reduce coupling**
   - *Encapsulate*: put an explicit interface around a module and hide its internals, which is information hiding (Parnas).
   - *Use an intermediary*: break a direct dependency A → B by inserting X, giving A → X → B. X can be a publish-subscribe bus, a broker, a repository or a proxy. The type of intermediary depends on the type of dependency.
@@ -297,7 +270,7 @@ Modifiability is about the **cost and risk of making changes**. Plan for change 
 | Compile / build time | Component replacement (in a build script or makefile); compile-time parameterisation; aspects | Gradle build flavour or `expect/actual` platform code |
 | Deployment time | Configuration-time binding | Different Firebase project per build or deploy |
 | Startup / initialisation time | Resource files | Level definitions or tuning values in JSON loaded at start |
-| Runtime | Runtime registration; dynamic lookup (e.g. of services); interpreting parameters; startup-time binding; name servers; plug-ins; publish-subscribe; shared repositories; polymorphism | Strategy/State objects chosen at runtime (polymorphism); an event bus between systems (publish-subscribe); Remote Config |
+| Runtime | Runtime registration; dynamic lookup (e.g. of services); interpreting parameters; startup-time binding (the 3rd ed. lists it among runtime mechanisms); name servers; plug-ins; publish-subscribe; shared repositories; polymorphism | Strategy/State objects chosen at runtime (polymorphism); an event bus between systems (publish-subscribe); Remote Config |
 
 ### Typical tradeoffs
 - Intermediaries and indirection cost **performance** (the classic tension with *reduce overhead*).
@@ -306,7 +279,7 @@ Modifiability is about the **cost and risk of making changes**. Plan for change 
 
 ### Exam traps
 - "Four groups of modifiability tactics" (asked in 2016): **reduce module size, increase cohesion, reduce coupling, defer binding**. In the 4th ed. there are three groups, because reduce size is folded into cohesion *(verify)*.
-- Do not list **patterns** (MVC, layers) as tactics. The course feedback explicitly flags this as a mistake. Say instead: "MVC realises *encapsulate* and *use an intermediary*".
+- Do not list **patterns** (MVC, layers) as tactics. The course feedback explicitly flags this as a mistake (see [`course-and-project-guide.md`](course-and-project-guide.md)). Say instead: "MVC realises *encapsulate* and *use an intermediary*".
 - A response measure like "easy to change" is not measurable. Count classes, hours or files.
 - Modifiability happens mostly at **design and development time**. A runtime environment is valid only for things like end-user configuration.
 
@@ -317,9 +290,7 @@ Modifiability is about the **cost and risk of making changes**. Plan for change 
 3rd ed. ch. 8 / 4th ed. ch. 9. Adapted in part from the Wikipendium compendium (CC BY-SA 3.0).
 
 ### Definition
-Performance is about **time**: the system's ability to meet timing requirements when events arrive. Response time has two components:
-- **processing time**, when resources are consumed;
-- **blocked time**, which comes from contention for resources, waiting for a resource to become available, and waiting for other computations.
+Performance is about **time**: the system's ability to meet timing requirements when events arrive. Response time has two components: **processing time**, when resources are consumed, and **blocked time**, which comes from contention for resources, waiting for a resource to become available, and waiting for other computations.
 
 ### General scenario (3rd ed.)
 
@@ -332,10 +303,7 @@ Performance is about **time**: the system's ability to meet timing requirements 
 | Response | Process the events; possibly change the level of service |
 | Response measure | Latency, deadline, throughput, jitter, miss rate (some summaries add data loss) |
 
-Arrival patterns:
-- **Periodic** events arrive at fixed intervals, such as a 60 Hz frame tick.
-- **Stochastic** events arrive according to a probability distribution, such as player actions.
-- **Sporadic** events arrive at an unknown time, but with a known minimum gap between them.
+Arrival patterns: **periodic** events arrive at fixed intervals (a 60 Hz frame tick), **stochastic** ones follow a probability distribution (player actions), and **sporadic** ones arrive at unknown times but with a known minimum gap.
 
 ### Concrete game-project scenario
 
@@ -346,7 +314,7 @@ Arrival patterns:
 | Artifact | Input handling, the game loop and the render pipeline |
 | Environment | Normal operation on a mid-range Android phone |
 | Response | The shot is processed and rendered |
-| Response measure | Visual feedback within 50 ms; a stable 60 fps with no more than 1% of frames above 33 ms |
+| Response measure | Median frame time ≤16.7 ms and 99th-percentile frame time ≤33 ms over a 60 s match; tap-to-feedback latency ≤50 ms |
 
 ### Tactic tree (3rd ed.)
 
@@ -379,7 +347,7 @@ Arrival patterns:
 
 ### Exam traps
 - In a game, frame time is a **deadline** or **latency** measure. "Runs smoothly" is not a response measure.
-- Do not confuse performance with **usability**. The teacher's feedback explicitly flags mixing the two. "Menu is intuitive" is usability; "menu opens in < 200 ms" is performance.
+- Do not confuse performance with **usability**. The teacher's feedback explicitly flags mixing the two (see [`course-and-project-guide.md`](course-and-project-guide.md)). "Menu is intuitive" is usability; "menu opens in < 200 ms" is performance.
 - Scalability is related to performance but is not the same thing (see §8).
 - Know the two top-level groups: **control resource demand** and **manage resources**.
 
@@ -390,15 +358,7 @@ Arrival patterns:
 3rd ed. ch. 9 / 4th ed. ch. 11. Adapted in part from the Wikipendium compendium (CC BY-SA 3.0).
 
 ### Definition
-Security is the system's ability to **protect data and information from unauthorised access while still giving access to people and systems that are authorised**. An attack is an attempt to breach this. The core properties are **CIA**:
-- **Confidentiality**: data and services are protected from unauthorised access.
-- **Integrity**: data and services are not manipulated without authorisation.
-- **Availability**: the system is available for legitimate use, so resisting denial of service is part of security.
-
-The supporting properties are:
-- **Authentication**: the parties are who they claim to be.
-- **Nonrepudiation**: a sender cannot deny sending, and a recipient cannot deny receiving.
-- **Authorization**: a party gets only the privileges it is entitled to.
+Security is the system's ability to **protect data and information from unauthorised access while still giving access to people and systems that are authorised**. An attack is an attempt to breach this. The core properties are **CIA**: **confidentiality** (no unauthorised access to data and services), **integrity** (no unauthorised manipulation) and **availability** (the system stays available for legitimate use, so resisting denial of service is part of security). The supporting properties are **authentication** (parties are who they claim to be), **nonrepudiation** (a sender cannot deny sending, nor a recipient receiving) and **authorization** (a party gets only the privileges it is entitled to).
 
 ### General scenario (3rd ed.)
 
@@ -419,8 +379,8 @@ The supporting properties are:
 | Stimulus | Tries to write a fake high score directly to the backend |
 | Artifact | The leaderboard collection in Firebase |
 | Environment | Online, normal operation |
-| Response | The write is rejected by the security rules or by server-side validation, and the attempt is logged |
-| Response measure | 100% of unauthenticated writes rejected; authenticated users can modify only their own documents; an attempt is visible in the logs within 1 min |
+| Response | Writes go through a Cloud Function that validates the score and logs each rejected write; direct client writes to the collection are denied by Security Rules |
+| Response measure | 100% of forged writes rejected in a test-suite run against the Firebase Emulator; authenticated users can modify only their own documents; each rejected attempt is logged by the function within 1 min |
 
 ### Tactic tree (3rd ed.)
 
@@ -449,16 +409,12 @@ The book's analogy is physical security: detect, resist, react, recover.
   - *Maintain audit trail*: record user and system actions and their effects, to trace attackers, support **nonrepudiation** and aid recovery. *(4th ed.: audit and nonrepudiation listed under recover; verify)*
   - *Restore*: bring the system back to a correct state, reusing the availability recovery tactics (rollback, redundancy and so on).
 
-**Corrections to Wikipendium glosses:**
-- *Limit exposure* means reducing the attack surface. It does not mean hiding how the system works.
-- *Identify actors* means identifying the source of input. It is a prerequisite for authentication and does not mean "finding the attacker".
-- *Change default settings* means forcing users to replace defaults, not having no defaults.
+**Corrections to Wikipendium glosses:** *limit exposure* means reducing the attack surface, not hiding how the system works; *identify actors* means identifying the source of input (a prerequisite for authentication), not "finding the attacker"; *change default settings* means forcing users to replace defaults, not having no defaults.
 
 ### Typical tradeoffs
 - Encryption, authentication and auditing cost **performance** (latency, CPU, battery).
 - Lockouts and more login steps hurt **usability**. Revoking access can hurt **availability** for legitimate users.
-- Separate entities and limit exposure increase **cost** and deployment complexity.
-- Audit trails raise **privacy** (GDPR) concerns about what is logged.
+- Separate entities and limit exposure increase **cost** and deployment complexity; audit trails raise **privacy** (GDPR) concerns about what is logged.
 
 ### Exam traps
 - CIA is the core. Authentication, nonrepudiation and authorization are *supporting* properties. Know all six.
@@ -527,12 +483,7 @@ Testability is the **ease with which software can be made to reveal its faults t
 3rd ed. ch. 11 / 4th ed. ch. 13. Adapted in part from the Wikipendium compendium (CC BY-SA 3.0).
 
 ### Definition
-Usability is **how easy it is for users to accomplish a task, and what kind of support the system gives them**. It covers five areas:
-- **learning** the system's features;
-- **using the system efficiently**;
-- **minimising the impact of user errors**;
-- **adapting** the system to the user's needs;
-- **increasing confidence and satisfaction**.
+Usability is **how easy it is for users to accomplish a task, and what kind of support the system gives them**. It covers five areas: **learning** the system's features · **using it efficiently** · **minimising the impact of user errors** · **adapting** it to the user's needs · **increasing confidence and satisfaction**.
 
 ### General scenario (3rd ed.)
 
@@ -540,8 +491,8 @@ Usability is **how easy it is for users to accomplish a task, and what kind of s
 |---|---|
 | Source | The end user, possibly in a specialised role |
 | Stimulus | The user tries to use the system efficiently, learn it, minimise the impact of errors, adapt it, or configure it |
-| Environment | Runtime or configuration time |
 | Artifact | The system, or the specific part the user interacts with |
+| Environment | Runtime or configuration time |
 | Response | Provide the features the user needs, or anticipate the user's needs |
 | Response measure | Task time; number of errors; number of tasks accomplished; user satisfaction; gain in user knowledge; ratio of successful to total operations; time or data lost when an error occurs |
 
@@ -551,8 +502,8 @@ Usability is **how easy it is for users to accomplish a task, and what kind of s
 |---|---|
 | Source | A first-time player |
 | Stimulus | Wants to learn how to start a multiplayer match |
-| Environment | Runtime, first launch |
 | Artifact | Main menu and lobby UI |
+| Environment | Runtime, first launch |
 | Response | Guided flow: the tutorial prompt, then "Play online", then a clear waiting indicator; cancel is always available |
 | Response measure | 9 out of 10 test users start a match within 60 s without help; 0 dead-end screens |
 
@@ -589,31 +540,22 @@ Usability is **how easy it is for users to accomplish a task, and what kind of s
 | **Variability** | The ability of a system and its artifacts to support producing a set of variants that differ in known ways | A special case of modifiability, and central to software **product lines**. Mechanisms: variation points, defer binding. |
 | **Portability** | The ease with which software built to run on one platform can be changed to run on another | A special case of modifiability. Key tactic: a **portability layer**, i.e. abstract platform services (for example libGDX backends, or Kotlin `expect/actual`). |
 | **Development distributability** | How well the software can be developed by distributed teams | Coordination cost follows module dependencies (Conway's law). Low coupling between work units helps. |
-| **Scalability** | The ability to handle more load by adding resources | **Horizontal** (scale out) adds logical units, such as another server in a cluster; in the cloud this is **elasticity**, adding and removing instances on demand. **Vertical** (scale up) adds resources to one physical unit, such as more memory or CPU. Measures: how the response changes as load grows, and cost per unit of capacity. |
-| **Deployability** | How an executable reaches its host platform and is then invoked; the time, cost and predictability of deployment | Its own chapter in the 4th ed. (ch. 5), covering CI/CD, rollback and canary releases. |
+| **Scalability** | The ability to handle more load by adding resources | **Horizontal** (scale out) adds logical units, such as another server in a cluster; in the cloud this is **elasticity**, adding and removing instances on demand. **Vertical** (scale up) adds resources to one physical unit, such as more memory or CPU. Measures: how the response changes as load grows, and cost per unit of capacity. Game example: Source players; Stimulus concurrent matches grow from 10 to 500; Environment peak; Response backend scales horizontally with no code change; Measure p95 matchmaking latency stays < 2 s. |
+| **Deployability** | How an executable reaches its host platform and is then invoked; the time, cost and predictability of deployment | Its own chapter in the 4th ed. (ch. 5), covering CI/CD, rollback and canary releases. Game example: a developer merges a fix to main; the CI pipeline builds, tests and publishes the APK to the internal test track with no manual steps within 15 min. |
 | **Mobility** | Problems of mobile platforms: moving between networks, battery, intermittent connectivity, small screens | Its own chapter (Mobile Systems, ch. 18) in the 4th ed. Very relevant to Android game projects. |
 | **Monitorability** | How well operations staff can observe the system while it runs | Built with metrics, logging and health endpoints. It overlaps with availability's *monitor* tactic. |
 | **Safety** | The system's ability to avoid entering states that cause or lead to damage, injury or loss of life | Its own chapter (ch. 10) in the 4th ed. Not the same as security: safety is about *harm*, whatever the intent. |
 
 ### ISO/IEC 25010 (the standard quality model)
-ISO/IEC 25010:2011 (the SQuaRE series) defines a **product quality model** with eight characteristics:
-- functional suitability
-- performance efficiency
-- compatibility (which includes interoperability)
-- usability
-- reliability (which includes availability)
-- security
-- maintainability (which includes modifiability and testability)
-- portability
-
-Each characteristic has sub-characteristics. The 3rd ed. discusses it as a standard list and notes that it does not give scenarios or tactics. A 2023 revision of 25010 changes the model; for example it adds safety and renames some characteristics (verify the details before citing it). Its taxonomy differs from SAiP's: modifiability and testability are sub-characteristics of maintainability, and availability is a sub-characteristic of reliability.
+ISO/IEC 25010:2011 (the SQuaRE series) defines a **product quality model** with eight characteristics, each with sub-characteristics: functional suitability, performance efficiency, compatibility (includes interoperability), usability, reliability (includes availability), security, maintainability (includes modifiability and testability) and portability. The 3rd ed. (§12.3) discusses standard QA lists such as this one and their limits; unlike SAiP, the standard gives no general scenarios or tactics, so scenarios are still needed to make a QA testable. A 2023 revision of 25010 changes the model; for example it adds safety and renames some characteristics (verify the details before citing it).
 
 ### How to specify a new QA
-The book's recipe in the other-QAs chapter runs roughly as follows (verify the exact steps in your edition):
+The 3rd ed. (§12.4, "Dealing with 'X-ability'") gives five steps; the 4th ed. covers the same material in ch. 14 (verify the exact steps in your edition):
 1. **Capture scenarios** for the new QA. Build a general scenario from stakeholder concerns.
-2. **Assemble design approaches**: find the tactics and patterns that affect the QA.
+2. **Assemble design approaches**: find the patterns and approaches known to affect the QA.
 3. **Model** the QA where possible, for example with queueing models for performance or Markov models for availability.
-4. **Build a design checklist** covering the seven categories of design decision (see below).
+4. **Assemble a set of tactics** for the new QA, drawn from the design approaches and the model's parameters.
+5. **Construct design checklists** covering the seven categories of design decision (see below).
 
 ### The seven design-decision categories (checklist used in every QA chapter)
 Allocation of responsibilities; coordination model; data model; management of resources; mapping among architectural elements; binding-time decisions; choice of technology. In every 3rd-ed. QA chapter, the book gives a checklist for each category. For example, for availability under allocation of responsibilities it asks: which responsibilities must be highly available, and how are faults detected for each of them?
@@ -649,6 +591,7 @@ Allocation of responsibilities; coordination model; data model; management of re
 | Usability | Support user initiative · Support system initiative |
 
 ### Checklist before answering a QA exam question
+- [ ] For "explain QA X": definition, six-part general scenario, one concrete scenario, top-level tactic groups then tactics, main tradeoffs.
 - [ ] All six parts are present, and the response measure is a **number with a unit**.
 - [ ] The scenario is labelled as general or concrete, and the one asked for is given.
 - [ ] Only tactics are named as tactics. Patterns are named separately, with the tactics they realise.

@@ -1,6 +1,6 @@
 # Architecture evaluation: ATAM, utility tree, CBAM, lightweight evaluation
 
-Sources: Bass, Clements & Kazman, *Software Architecture in Practice* (SAiP), 4th ed. (2021) ch. 21 "Evaluating an Architecture" (3rd ed., 2013: also ch. 21 "Architecture Evaluation"; CBAM is 3rd ed. ch. 23 "Economic Analysis of Architectures"); Kazman, Klein & Clements, *ATAM: Method for Architecture Evaluation*, CMU/SEI-2000-TR-004. The CBAM section is partly adapted from the Wikipendium TDT4240 compendium (CC BY-SA 3.0, https://www.wikipendium.no/TDT4240_Software_Architecture), completed and corrected from the book.
+Sources: Bass, Clements & Kazman, *Software Architecture in Practice* (SAiP), 4th ed. (2021) ch. 21 "Evaluating an Architecture" (3rd ed., 2013: also ch. 21 "Architecture Evaluation"; CBAM is 3rd ed. ch. 23 "Economic Analysis of Architectures"); Kazman, Klein & Clements, *ATAM: Method for Architecture Evaluation*, CMU/SEI-2000-TR-004. The CBAM section is partly adapted from the Wikipendium TDT4240 compendium (CC BY-SA 3.0, https://www.wikipendium.no/TDT4240_Software_Architecture), completed and corrected from the book. Contributors and the changes made are listed in `../CREDITS.md`.
 
 Related files: scenarios and the six-part format are in `quality-attributes-classic.md` / `quality-attributes-4th-edition.md`; ASRs, QAW and ADD are in `requirements-and-design.md`; the course procedure is in `course-and-project-guide.md`; the fill-in form is `../templates/atam-evaluation.md`.
 
@@ -18,7 +18,7 @@ Related files: scenarios and the six-part format are in `quality-attributes-clas
 
 **Cost/benefit.** An evaluation costs participant time (evaluation team, architect, decision makers, stakeholders). It pays off when the system is large or risky, the QAs are demanding, or decisions are expensive to reverse. For a small, low-risk decision a lightweight or self-evaluation is enough. (SAiP gives effort figures; quote them only from the book.)
 
-**Who evaluates (4th ed. ch. 21 framing).**
+**Who evaluates (4th ed. ch. 21; 3rd ed. ch. 21 covers the same three forms, verify wording).**
 
 | Form | Who | Typical use | Strength / weakness |
 |---|---|---|---|
@@ -64,7 +64,7 @@ Phase 1 and Phase 2 are usually separated by a pause (weeks) in which the team f
 | 1 | Present the ATAM | Evaluation leader explains the method, what outputs to expect | Shared expectations |
 | 2 | Present business drivers | Project manager/customer: business goals, main functions, constraints (technical, economic, managerial), stakeholders, architectural drivers | Business goals and drivers |
 | 3 | Present the architecture | Architect presents views, how the architecture meets the drivers, technical constraints, other systems it interacts with | Concise architecture presentation |
-| 4 | Identify architectural approaches | Team catalogues the patterns and tactics used (not analysed yet) | List of approaches |
+| 4 | Identify architectural approaches | The architect identifies the patterns and tactics used; the evaluation team captures them (not analysed yet) | List of approaches |
 | 5 | Generate the QA utility tree | Decision makers refine the QAs into concrete, prioritised scenarios (section 3) | Utility tree |
 | 6 | Analyse architectural approaches | For the highest-ranked scenarios, the architect explains how the approaches achieve them; the team probes | Risks, non-risks, sensitivity points, tradeoff points, (initial) mapping approaches -> QAs |
 
@@ -72,7 +72,7 @@ Phase 1 and Phase 2 are usually separated by a pause (weeks) in which the team f
 
 | # | Step | What happens | Output |
 |---|---|---|---|
-| 7 | Brainstorm and prioritise scenarios | Larger stakeholder group proposes use-case, growth and exploratory scenarios; they vote (SAiP: each stakeholder gets votes equal to about 30% of the number of scenarios, rounded up; verify). Result is compared with the utility tree; new high-priority scenarios are added as leaves | Prioritised scenario list, validated/extended utility tree |
+| 7 | Brainstorm and prioritise scenarios | Larger stakeholder group proposes use-case, growth and exploratory scenarios; they vote (SAiP: each stakeholder gets votes equal to about 30% of the number of scenarios, rounded up; check SAiP ch. 21 for the exact rounding rule). Result is compared with the utility tree; new high-priority scenarios are added as leaves | Prioritised scenario list, validated/extended utility tree |
 | 8 | Analyse architectural approaches (again) | Repeat step 6 with the new high-priority scenarios from step 7 | More risks, non-risks, sensitivity and tradeoff points |
 | 9 | Present results | Team presents findings back to stakeholders, including risk themes | Final briefing, later a written report (Phase 3) |
 
@@ -82,21 +82,20 @@ Mnemonic for the two groups: **1-6 = present, present, present, identify, tree, 
 
 1. A concise **presentation of the architecture** (forced by step 3; often better than the existing documentation).
 2. Articulated **business goals**.
-3. Prioritised **QA requirements expressed as scenarios**.
-4. The **utility tree**.
-5. A set of **risks** and **non-risks**.
-6. A set of **sensitivity points** and **tradeoff points**.
-7. **Risk themes**: risks grouped by common underlying cause, each tied back to the business goals it threatens.
-8. A **mapping of architectural approaches (decisions) to QAs**, showing how each approach helps or hurts.
+3. Prioritised **QA requirements expressed as scenarios**, organised as a **utility tree** (the SEI report, CMU/SEI-2000-TR-004, lists the utility tree as a separate output; SAiP folds it into this item).
+4. A set of **risks** and **non-risks**.
+5. A set of **sensitivity points** and **tradeoff points**.
+6. **Risk themes**: risks grouped by common underlying cause, each tied back to the business goals it threatens.
+7. A **mapping of architectural approaches (decisions) to QAs**, showing how each approach helps or hurts.
 
 Intangible outputs: stakeholder communication, a sense of community around the architecture, clarified QA requirements, better documentation.
 
-### 2.5 Precise definitions (2016 exam: sensitivity point vs tradeoff point)
+### 2.5 Precise definitions (sensitivity point vs tradeoff point: a classic exam question)
 
 | Term | Definition | Test |
 |---|---|---|
-| **Sensitivity point** | A property of one or more components and/or component relationships (i.e. an architectural decision/parameter) that is critical for achieving a particular QA response. Changing it noticeably changes that response. | Affects **one** QA significantly |
-| **Tradeoff point** | A property that affects **more than one** QA and is a sensitivity point for more than one, improving one while degrading another. | Sensitivity point for **two or more** QAs, in opposite directions |
+| **Sensitivity point** | A property of one or more components and/or component relationships (i.e. an architectural decision/parameter) that is critical for achieving a particular QA response. Changing it noticeably changes that response. | Critical for at least one named QA response (name the QA and the response); if critical for two or more QAs, it is also a tradeoff point |
+| **Tradeoff point** | A property that affects **more than one** QA and is a sensitivity point for more than one QA. Typically it improves one QA at the expense of another (e.g. encryption level: security vs performance). | Sensitivity point for **two or more** QAs (typically pulling in opposite directions) |
 | **Risk** | An architecturally important decision that is potentially problematic given the QA requirements (or an important decision not yet made). | "This may cause us to miss scenario X" |
 | **Non-risk** | A good decision, judged safe, that often rests on an explicit or implicit assumption. Record the assumption: if it breaks, the non-risk becomes a risk. | "Fine, *as long as* ..." |
 | **Risk theme** | A cluster of related risks pointing at a systemic weakness | "No consistent strategy for handling network loss" |
@@ -119,9 +118,9 @@ One row per (scenario, decision) pair. Use IDs so risks can be clustered into th
 
 | Scenario (ID, text, priority) | Approach / decision | Sensitivity | Tradeoff | Risk | Non-risk | Reasoning |
 |---|---|---|---|---|---|---|
-| M1 (H,H): add a new power-up type in < 4 h, touching <= 3 classes | ECS: power-up = new component + system | S1: granularity of components | - | - | N1: new systems plug in without changing others (assumes system execution order is irrelevant) | ECS isolates behaviour in systems; order dependence would break the assumption |
-| P1 (H,M): opponent's move visible within 500 ms on 4G | Realtime Database listener + client-side prediction | S2: push frequency | T1: push frequency vs battery/data use | R1: no throttling; burst writes may hit quota | - | Each move is one write; no batching |
-| S1 (M,H): a modified client cannot report an illegal move | Client-authoritative moves, no server validation | - | T2: validation vs latency (if added) | R2: cheating possible | - | Security rules check only authentication, not game rules |
+| M1 (H,H): add a new power-up type in < 4 h, touching <= 3 classes | ECS: power-up = new component + system | SP1: granularity of components | - | - | N1: new systems plug in without changing others (assumes system execution order is irrelevant) | ECS isolates behaviour in systems; order dependence would break the assumption |
+| P1 (H,M): opponent's move visible within 500 ms on 4G | Realtime Database listener + client-side prediction | SP2: push frequency | TP1: push frequency vs battery/data use | R1: no throttling; burst writes may hit quota | - | Each move is one write; no batching |
+| Sec1 (M,H): a modified client cannot report an illegal move | Client-authoritative moves, no server validation | - | - | R2: cheating possible | - | Security rules check only authentication, not game rules. The obvious fix (server-side validation) would itself become a tradeoff point: security vs latency |
 
 For each scenario in step 6/8 the evaluators ask: Which approaches realise this scenario? What are their parameters (sensitivity)? What else do those parameters affect (tradeoff)? What assumptions does this rely on (non-risk)? What is unaddressed or dubious (risk)?
 
@@ -151,7 +150,7 @@ Utility
 │   ├── New gameplay content
 │   │   └── (H,H) A developer adds a new game mode in <= 2 person-days, changing no networking code
 │   └── Backend replacement
-│       └── (M,H) Replace Firebase with Supabase in <= 1 week; only the backend adapter module changes
+│       └── (M,H) Replace Firebase with Supabase in <= 2 person-weeks; only the backend adapter module changes
 ├── Performance
 │   ├── Frame rate
 │   │   └── (H,M) 60 FPS with 50 on-screen entities on a mid-range Android phone
@@ -162,10 +161,10 @@ Utility
 │       └── (M,L) A first-time player completes the tutorial in < 3 minutes without help
 └── Availability
     └── Connection loss
-        └── (H,M) After a 10 s network drop the match resumes with no lost moves
+        └── (H,H) After a 10 s network drop the match resumes with no lost moves
 ```
 
-Step 6 would start with the two (H,H) leaves. The utility tree is built top-down by decision makers in Phase 1; step 7's stakeholder brainstorm is the bottom-up cross-check. If stakeholders rank highly a scenario the tree missed, that is itself a finding (the decision makers and stakeholders disagree on priorities).
+Step 6 would start with the three (H,H) leaves. The ratings are illustrative: they depend on the group's business goals. The utility tree is built top-down by decision makers in Phase 1; step 7's stakeholder brainstorm is the bottom-up cross-check. If stakeholders rank highly a scenario the tree missed, that is itself a finding (the decision makers and stakeholders disagree on priorities).
 
 Utility trees are also used outside ATAM to capture ASRs (see `requirements-and-design.md`).
 
@@ -180,13 +179,13 @@ A shortened, in-house variant of ATAM for organisations or teams that evaluate r
 - It still produces a utility tree, prioritised scenarios, and risks/non-risks/sensitivity/tradeoff points, but with less depth and less stakeholder coverage.
 - Tradeoff: much cheaper and repeatable (e.g. every iteration), but less objective and less thorough than a full ATAM.
 
-The book gives a specific step-by-step table with time allocations; verify the exact step list and durations against SAiP ch. 21 (the section exists in the 4th ed. and probably also in the 3rd ed.; unverified) before quoting it. The TDT4240 peer ATAM is effectively a lightweight evaluation.
+The book gives a specific step-by-step table with time allocations; verify the exact step list and durations against SAiP ch. 21 (it is a section of ch. 21 in both the 3rd and 4th editions) before quoting it. The TDT4240 peer ATAM is effectively a lightweight evaluation.
 
 ---
 
 ## 5. CBAM (Cost Benefit Analysis Method)
 
-**Status in the course:** SAiP 3rd ed. ch. 23. The Wikipendium compendium marks CBAM as *not* part of the Spring 2019 syllabus. The 4th ed. has no dedicated CBAM chapter (it may be mentioned in passing; verify). CBAM did appear in the 2016 exam (ATAM vs CBAM, the CBAM process), so know it if the current reading list includes the 3rd ed. chapter.
+**Status in the course:** SAiP 3rd ed. ch. 23. The 4th ed. has no dedicated CBAM chapter (it may be mentioned in passing; verify). Whether CBAM is on the syllabus has varied between years, and it has appeared in past exams (ATAM vs CBAM, the CBAM process); verify both against the current reading list and the exam archive. Know it if the current reading list includes the 3rd ed. chapter.
 
 **Purpose.** ATAM tells you *what* the risks and tradeoffs are; CBAM tells you *which architectural strategies are worth their cost*. It makes economic questions explicit, e.g. "Would stakeholders pay more for a faster system?", "How much availability can the budget buy?", "Is a two-month delay acceptable for extra security?". It builds on ATAM output (scenarios, utility tree, approaches) and models the utility of each scenario as a function of its response measure (a utility-response curve).
 
@@ -196,11 +195,11 @@ The book gives a specific step-by-step table with time allocations; verify the e
 |---|---|---|
 | 1 | Collate scenarios | Gather ATAM scenarios; stakeholders may add more; prioritise by business goals; **keep the top third** |
 | 2 | Refine scenarios | For each, state response levels: **worst** (minimum acceptable threshold), **current**, **desired**, **best** (beyond which no further utility) |
-| 3 | Prioritise scenarios | Each stakeholder distributes **100 votes**; weights come from the votes; **drop the lower half** |
+| 3 | Prioritise scenarios | Each stakeholder distributes **100 votes** over the scenarios; **drop the lower half**. Weight: the highest-voted scenario gets **1.0**, each other scenario gets its votes / the top scenario's votes |
 | 4 | Assign utility | Stakeholders assign utility (0-100) to each response level (worst, current, desired, best) of each remaining scenario, giving a utility-response curve |
 | 5 | Develop architectural strategies and their expected response levels | Architects propose strategies (AS_i) addressing the scenarios and estimate the response each one would produce for every scenario it affects |
 | 6 | Determine expected utility | Read the utility of each expected response level off the curve by **interpolation** |
-| 7 | Calculate total benefit | **B_i = sum_j (b_ij x W_j)**, where b_ij = expected utility of AS_i on scenario j minus current utility of scenario j, and W_j = scenario j's weight (normalised votes) |
+| 7 | Calculate total benefit | **B_i = sum_j (b_ij x W_j)**, where b_ij = expected utility of AS_i on scenario j minus current utility of scenario j, and W_j = scenario j's weight from step 3 (top scenario 1.0, others relative to it) |
 | 8 | Choose strategies by value for cost | **VFC_i = B_i / C_i** (C_i = cost of AS_i); rank by VFC and pick from the top **within the budget** |
 | 9 | Confirm with intuition | Do the chosen strategies fit the business goals? If not, revisit assumptions (missing scenarios, bad cost or utility estimates) |
 
@@ -208,23 +207,23 @@ Note: a strategy can affect several scenarios, sometimes negatively (a tradeoff)
 
 ### 5.2 Tiny worked example
 
-Two scenarios survive step 3, weights W normalised from votes:
+Two scenarios survive step 3 with 60 and 40 votes, so W = 1.0 for S1 and 40/60 = 0.67 for S2:
 
 | Scenario | W | Utility curve (response -> utility) |
 |---|---|---|
-| S1 performance: match load time | 0.6 | 5 s -> 0 (worst), 2 s -> 40 (current), 1 s -> 80 (desired), 0.5 s -> 100 (best) |
-| S2 availability: match survives server fault | 0.4 | 99% -> 50 (current), 99.9% -> 90 (desired) |
+| S1 performance: match load time | 1.0 | 5 s -> 0 (worst), 2 s -> 40 (current), 1 s -> 80 (desired), 0.5 s -> 100 (best) |
+| S2 availability: match survives server fault | 0.67 | 95% -> 0 (worst), 99% -> 50 (current), 99.9% -> 90 (desired), 99.99% -> 100 (best) |
 
 Strategies (step 5), costs in person-weeks:
 
 | Strategy | Expected response | Expected utility (interpolated) | b_ij | B_i | C_i | VFC |
 |---|---|---|---|---|---|---|
-| A: cache match assets | S1: 1.5 s (S2 unchanged) | S1: halfway 40-80 = 60 | S1: +20 | 20 x 0.6 = **12** | 4 | **3.0** |
-| B: passive redundancy | S2: 99.9%; S1 slows to 2.2 s | S2: 90; S1: 40 - (0.2/3) x 40 = 37.3 | S2: +40; S1: -2.7 | 40 x 0.4 - 2.7 x 0.6 = **14.4** | 8 | **1.8** |
+| A: cache match assets | S1: 1.5 s (S2 unchanged) | S1: halfway 40-80 = 60 | S1: +20 | 20 x 1.0 = **20** | 4 | **5.0** |
+| B: passive redundancy | S2: 99.9%; S1 slows to 2.2 s | S2: 90; S1: 40 - (0.2/3) x 40 = 37.3 | S2: +40; S1: -2.7 | 40 x 0.67 - 2.7 x 1.0 = **24.1** | 8 | **3.0** |
 
-B has the higher total benefit, but A has the better value for cost. With a budget of 10 person-weeks, choose A (4) first; B (8) no longer fits, so the result is A alone. With 12 or more, choose both. Step 9: check that "faster loading first, availability later" matches the business goals.
+B has the higher total benefit, but A has the better value for cost. With a budget of 10 person-weeks, choose A (4) first; B (8) no longer fits, so the result is A alone. With 12 or more, choose both. (If you instead normalise weights to sum to 1, e.g. 0.6/0.4, the B_i values change but the ranking does not; the book uses the relative-to-top weighting.) Step 9: check that "faster loading first, availability later" matches the business goals.
 
-### 5.3 ATAM vs CBAM (2016 exam topic)
+### 5.3 ATAM vs CBAM (past exam topic; verify against the exam archive)
 
 | Aspect | ATAM | CBAM |
 |---|---|---|
@@ -251,7 +250,7 @@ B has the higher total benefit, but A has the better value for cost. With a budg
 
 ### Common student mistakes
 
-- Calling any design weakness a "tradeoff point". It is a tradeoff point only if the *same* decision affects two QAs in opposite directions.
+- Calling any design weakness a "tradeoff point". It is a tradeoff point only if the *same* decision is a sensitivity point for two or more QAs (typically pulling in opposite directions).
 - Listing a sensitivity point without saying which QA and which response it is sensitive to.
 - Non-risks without the assumption they depend on.
 - Utility-tree leaves that are not scenarios ("the game should be fast").

@@ -3,14 +3,18 @@
 > **The official template takes precedence.** If the course staff publish an
 > architecture-document template or assignment text for your year (Blackboard or
 > the course page), follow it. This file is an unofficial scaffold. Its section
-> order matches recent public group documents and the teacher feedback they got.
-> The required sections, page limits and deadlines may change from year to year.
+> order follows public group documents, and the "teacher feedback" notes below
+> paraphrase the written feedback published with one 2026 group's documents
+> (github.com/Yannic-Neu/battleships-ex; see `../references/course-and-project-guide.md`,
+> section 5). That is one group's feedback, not an official rubric. The required
+> sections, page limits and deadlines may change from year to year.
 
 How to use it: copy everything below the line, replace every `<...>`, and delete
 the `<!-- guidance -->` comments before you hand it in. The small examples are for
 a made-up libGDX + Firebase multiplayer game called "Tank Duel". Replace them.
 Theory is in `../references/documentation.md` (views, IEEE 1471, 4+1) and in
-`../references/quality-attributes-classic.md`, `../references/architectural-patterns.md`
+`../references/quality-attributes-classic.md`, `../references/quality-attributes-4th-edition.md`,
+`../references/architectural-patterns.md`
 and `../references/design-and-game-patterns.md`. Write the requirements first
 (`requirements-document.md`). The ATAM evaluation of this document uses
 `atam-evaluation.md`.
@@ -29,7 +33,7 @@ and `../references/design-and-game-patterns.md`. Write the requirements first
 | Secondary quality attributes | `<Performance, Usability>` |
 | Document version / date | `<v1.0, YYYY-MM-DD>` |
 
-<!-- Teacher feedback on public documents: the front page must show the game title and the chosen COTS. -->
+<!-- Teacher feedback (one public 2026 group, see top note): the front page must show the game title and the chosen COTS. -->
 
 ## 1. Introduction
 
@@ -66,6 +70,8 @@ and `../references/design-and-game-patterns.md`. Write the requirements first
 ### 2.3 Business drivers
 `<e.g. Delivered within the course deadline by a team of N; must run on Android; free backend tier only; group has limited Kotlin/Java experience. Keep constraints (mandated by course/COTS) apart from decisions.>`
 
+`<COTS constraints: refer to the requirements document section 5; restate only those that shape the architecture, e.g. libGDX owns the game loop (we implement ApplicationListener/Screen, so control flow is inverted), Firebase calls are asynchronous.>`
+
 ## 3. Stakeholders and concerns
 
 | Stakeholder | Concerns | Addressed in |
@@ -76,7 +82,7 @@ and `../references/design-and-game-patterns.md`. Write the requirements first
 | **ATAM evaluation group** | Understandable views; QA scenarios, tactics and rationale they can analyse | 2, 5, 6, 7, 9 |
 | `<Backend provider (Firebase) / ops>` | `<Quota limits, security rules>` | `<7.1, 7.4>` |
 
-<!-- Teacher feedback: the ATAM evaluation group must be listed as a stakeholder. -->
+<!-- Teacher feedback (see top note): the ATAM evaluation group must be listed as a stakeholder. -->
 
 ## 4. Architectural viewpoints
 
@@ -92,14 +98,17 @@ and `../references/design-and-game-patterns.md`. Write the requirements first
 ## 5. Architectural tactics
 
 <!-- A tactic is a design decision that affects ONE quality attribute's response. Do NOT list
-     patterns (MVC, Observer, State ...) here; they go in section 6. Name tactics as in SAiP. -->
+     patterns (MVC, Observer, State ...) here; they go in section 6. Tactic names follow SAiP 3rd ed.;
+     4th-ed. (2021, current) renames are in parentheses and unverified (see
+     quality-attributes-4th-edition.md §7). Name tactics as in the edition your course uses. -->
 
 | Tactic | QA | Where realised |
 |---|---|---|
 | Encapsulate (backend behind an interface) | Modifiability | `<BackendApi interface in core, implemented by FirebaseBackend in the android module>` |
-| Increase semantic coherence | Modifiability | `<Each screen/state class has one responsibility>` |
+| Increase semantic coherence, under Increase cohesion (4th ed.: Redistribute responsibilities; verify) | Modifiability | `<Each screen/state class has one responsibility>` |
 | Defer binding (game-mode config loaded at start-up) | Modifiability | `<GameModeRegistry reads config file>` |
-| Reduce overhead / manage sampling rate (send only state deltas at a fixed rate) | Performance | `<NetworkSync sends at 10 Hz>` |
+| Manage sampling rate (4th ed.: Manage work requests; verify): send network updates at a fixed rate, not every frame | Performance | `<NetworkSync sends at 10 Hz>` |
+| Increase resource efficiency (4th ed.: Increase efficiency of resource usage; verify): send state deltas, not full snapshots | Performance | `<NetworkSync delta encoder>` |
 | Maintain multiple copies of data (local cache of match state) | Performance | `<LocalMatchState>` |
 | Support user initiative: cancel, pause/resume | Usability | `<PauseState, Cancel in matchmaking screen>` |
 | `<Retry (for transient network faults)>` | `<Availability>` | `<NetworkSync>` |
@@ -111,11 +120,13 @@ and `../references/design-and-game-patterns.md`. Write the requirements first
 | Problem | Pattern | High-level use |
 |---|---|---|
 | Keep game logic independent of rendering and input | MVC (architectural) | `<Model = world/entities, View = libGDX Screens, Controller = input handlers>` |
-| Two devices share match state | Client-server (via Firebase) | `<Clients read and write the match node; Firebase relays changes>` |
+| Two devices share match state | Shared data / repository (architectural), with publish-subscribe change notification; client-server at the deployment level | `<Firebase RTDB is the shared repository: clients read and write the match node and get change events. There is no server-side game logic, so clients are trusted, checked only by security rules.>` |
 | Screens switch between menu, lobby, game, game over | State (design) | `<GameStateManager holds the current state>` |
-| Many entity types with shared behaviour | `<Entity Component System>` | `<Entities = IDs, components = data, systems = logic per frame>` |
+| Many entity types with shared behaviour | `<Entity Component System (architectural pattern for game logic; not a SAiP catalogue pattern)>` | `<Entities = IDs, components = data, systems = logic per frame>` |
 | React to backend changes | Observer (design) | `<Listeners registered on match data>` |
-| Create entities by type | Factory Method (design) | `<EntityFactory>` |
+| Each game mode creates its own player tank | Factory Method (design) | `<Abstract GameMode.createPlayerTank(), overridden by each game-mode subclass. A single EntityFactory.create(type) is a simple (parameterised) factory, not GoF Factory Method.>` |
+
+<!-- Name the pattern that matches how you actually use the backend and justify it in section 9. -->
 
 ## 7. Architectural views
 
@@ -168,13 +179,13 @@ sequenceDiagram
     participant M as Model/World
     participant B as BackendApi
     participant F as Firebase RTDB
-    participant O as Player B device
+    participant O as Player B (Android main thread)
     P->>C: tap fire
     C->>M: applyMove()
     M->>B: sendMove(delta)
     B->>F: setValue (async)
     F-->>O: onDataChange
-    O->>O: postRunnable -> update model on render thread
+    O->>O: Gdx.app.postRunnable -> model updated on render thread
 ```
 
 ```mermaid
@@ -182,8 +193,11 @@ flowchart LR
     A["render(dt)"] --> B[poll input] --> C[update systems] --> D[apply queued network events] --> E[draw] --> A
 ```
 
-`<State which thread runs what: libGDX render thread vs Firebase callback threads, and how results
-are moved back, e.g. Gdx.app.postRunnable. Note the frame-rate budget if P-scenarios need it.>`
+`<State which thread runs what: the libGDX render (GL) thread runs the game loop, and Firebase listeners
+fire on the Android main thread by default. Hand results to the render thread with Gdx.app.postRunnable
+before touching the model. Note the frame-rate budget if P-scenarios need it.>`
+
+`Tactics/patterns visible here: <Observer (listeners), Manage sampling rate (NetworkSync 10 Hz), Retry>`
 
 ### 7.3 Development view
 Modules and packages, plus how the team splits work.
@@ -206,6 +220,8 @@ flowchart TB
 
 `<Mention the build tool (Gradle), branch strategy, and the rule that core never imports Android or Firebase classes.>`
 
+`Tactics/patterns visible here: <Encapsulate / Restrict dependencies (core never imports android), Layers>`
+
 ### 7.4 Physical view
 Devices, servers and **network types**.
 
@@ -216,6 +232,8 @@ flowchart LR
     phoneA -- "HTTPS" --> auth["Firebase Auth"]
     dev["Developer PC<br/>(lwjgl3 build)"] -. "local test" .-> fb
 ```
+
+`Tactics/patterns visible here: <Client-server / shared data (Firebase), Maintain multiple copies of data (local cache on phone)>`
 
 ## 8. Consistency among views
 
@@ -235,9 +253,12 @@ Known inconsistencies: `<e.g. the desktop build uses a mock backend that is not 
 | Decision | Tactic / pattern | QA goal served | Alternatives rejected (why) |
 |---|---|---|---|
 | `<Backend behind BackendApi>` | Encapsulate, Use an intermediary | M1 | `<Calling Firebase directly from states: couples core to Android>` |
-| `<Send deltas at 10 Hz>` | Manage sampling rate | P1 | `<Sending the full state every frame: too much traffic>` |
+| `<Send deltas at 10 Hz>` | Manage sampling rate (4th ed.: Manage work requests; verify), Increase resource efficiency (4th ed.: Increase efficiency of resource usage; verify) | P1 | `<Sending the full state every frame: too much traffic>` |
 
-Optional, Nygard-style ADR (a short format; check the course template allows it):
+`<Trade-off: the BackendApi intermediary costs some performance (it is the opposite of Reduce (computational) overhead). We accept this cost for M1.>`
+
+Optional ADR in Nygard's format (Title, Status, Context, Decision, Consequences), extended here with
+Alternatives rejected; check the course template allows it:
 
 ```markdown
 ### ADR-01: Hide the backend behind an interface in core
@@ -262,10 +283,11 @@ Alternatives rejected: direct Firebase calls (couples core to Android); own serv
 | `<Name 1>` | `<Logical view, section 6>` |
 
 ## 13. References
-<!-- Cite everything you use. Feedback on public documents: include references. -->
-- Bass, L., Clements, P., Kazman, R. *Software Architecture in Practice*, 4th ed., Addison-Wesley, 2021. (3rd ed., 2013, uses different chapter numbers; cite the edition you read.)
+<!-- Cite everything you use. Teacher feedback (see top note): include references. -->
+- Bass, L., Clements, P., Kazman, R. *Software Architecture in Practice*, 4th ed., Addison-Wesley, 2021. (3rd ed., 2013: chapter numbers and several tactic names differ between the 3rd and 4th editions; cite the edition you read.)
 - Kruchten, P. "The 4+1 View Model of Architecture." *IEEE Software* 12(6), 1995, pp. 42-50.
 - IEEE Std 1471-2000, *Recommended Practice for Architectural Description of Software-Intensive Systems*.
+- Nygard, M. "Documenting Architecture Decisions", 2011. https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions (only if you use ADRs).
 - `<libGDX documentation, Firebase documentation, other sources you used>`
 
 ---
@@ -273,19 +295,22 @@ Alternatives rejected: direct Firebase calls (couples core to Android); own serv
 ## Appendix (optional, beyond syllabus): mapping to arc42 / C4
 
 Not part of the TDT4240 syllabus. Use only if readers expect an industry format. A real example that
-combines arc42, C4, 4+1 and ADRs under ISO/IEC/IEEE 42010 (the successor to IEEE 1471):
+combines arc42, C4, 4+1 and ADRs under ISO/IEC/IEEE 42010 (2011; revised 2022), the successor to IEEE 1471:
 https://gitlab.com/wallywallet/wallet/-/merge_requests/853.
 
 | This template | arc42 section | C4 level | 4+1 |
 |---|---|---|---|
 | 1 Introduction, 2 Drivers | 1 Introduction and Goals, 2 Constraints | - | Scenarios (+1) |
 | 2.2 Quality drivers | 10 Quality Requirements | - | Scenarios |
-| 7.1 Logical view | 3 Context and Scope, 5 Building Block View | L1 Context, L3 Component | Logical |
-| 7.3 Development view | 5 Building Block View | L2 Container | Development |
+| 7.1 Logical view | 3 Context and Scope, 5 Building Block View | L3 Component (+ L1 Context for external services) | Logical |
+| 7.3 Development view | 5 Building Block View | L3 Component / L4 Code (package structure) | Development |
 | 7.2 Process view | 6 Runtime View | Dynamic diagram | Process |
-| 7.4 Physical view | 7 Deployment View | Deployment diagram | Physical |
+| 7.4 Physical view | 7 Deployment View | L2 Container, Deployment diagram | Physical |
 | 9 Rationale / ADRs | 4 Solution Strategy, 9 Architecture Decisions | - | - |
 | 10 Issues | 11 Risks and Technical Debt | - | - |
+
+C4 containers are separately runnable or deployable units, so L2 overlaps the physical and process views
+rather than the development view.
 
 ## Pre-submission checklist
 - [ ] Front page has the game title and the chosen COTS.

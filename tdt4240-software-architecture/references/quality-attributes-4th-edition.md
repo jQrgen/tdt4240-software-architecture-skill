@@ -4,7 +4,9 @@
 > *Software Architecture in Practice*, 3rd ed. (2013) and 4th ed. (2021). The **chapter titles and
 > numbers are confirmed** from the publisher's (InformIT) table of contents. The **tactic names,
 > tactic groupings and general-scenario wording were NOT fully checked against the printed 4th
-> edition**. They are reconstructed from secondary knowledge. Every item below carries one of two tags:
+> edition**. They are reconstructed from secondary knowledge. They were cross-checked against the
+> 4th-ed. tactic figures as recalled, but still need confirming against the printed book; do not
+> "correct" them back toward the 3rd-ed. wording. Every item below carries one of two tags:
 >
 > - **[confirmed chapter title]**: the chapter exists with this title and number.
 > - **[verify tactic wording in the book]**: plausible and widely cited, but check the exact wording
@@ -73,8 +75,9 @@ invoked (adapted from the Wikipendium TDT4240 compendium, CC BY-SA 3.0).
 | | Package dependencies | Ship a component together with its dependencies (containers, bundles) |
 | | Feature toggle | Deploy code switched off ("dark") and turn it on at runtime with a flag, which also works as a kill switch |
 
-Patterns the 4th ed. associates with deployability (approximate): microservices, and the
-blue/green, rolling-upgrade and canary deployment strategies.
+Patterns the 4th ed. associates with deployability (approximate): microservice architecture;
+complete replacement of services (blue/green, rolling upgrade); and partial replacement of services
+(canary testing, A/B testing).
 
 **Game-project example.** Source: the development team. Stimulus: a balance patch for the libGDX
 game. Artifact: game-rules config and the backend (e.g. Firebase) rules. Environment: live game with active
@@ -105,11 +108,14 @@ and availability (redundancy costs power).
 |---|---|
 | Monitor resources | Metering (measure consumption directly); static classification (use known power figures per device); dynamic classification (estimate from a model at runtime) |
 | Allocate resources | Reduce usage (power down or throttle idle devices, lower CPU frequency); discovery (find the most energy-efficient resource); schedule resources (place work where it costs least energy) |
-| Reduce resource demand | Manage event arrival, limit event response, prioritise events, reduce computational overhead, bound execution times, increase efficiency of resource usage (largely the same as the performance demand-side tactics) |
+| Reduce resource demand | Largely mirrors the performance "control resource demand" tactics: manage work requests (the 4th-ed. name that replaces 3rd-ed. manage event arrival / manage sampling rate), limit event response, prioritise events, reduce computational overhead, bound execution times, increase efficiency of resource usage. Exact list unverified. |
 
 **Game-project example.** Frame-rate cap on the menu screen (30 fps instead of 60), batching of
 network writes to the backend, and pausing the game loop when the app goes to the background.
-Measure: at most N % battery per 30 min session on a mid-range Android phone.
+Measure: at most 5 % battery per 30 min session on a mid-range Android phone (example target;
+pick a figure you can actually measure).
+
+Patterns the 4th ed. associates with energy efficiency: not covered here; check the book.
 
 ## 4. Integrability (4th ed. ch. 7) [confirmed chapter title]
 
@@ -117,11 +123,12 @@ Measure: at most N % battery per 30 min session on a mid-range Android phone.
 work together as intended. Examples are adding a new component, integrating a new version of one,
 or combining existing components in a new way.
 
-**How it broadens 3rd-ed. interoperability.** 3rd-ed. ch. 6 *Interoperability* was the degree to which
-two or more **systems** can usefully exchange meaningful information through interfaces
-(syntactic plus semantic), with two concerns: *discovery* and *handling of the response*. Its
-tactics were only **Locate** (discover service) and **Manage interfaces** (orchestrate, tailor
-interface). Adapted from the Wikipendium TDT4240 compendium (CC BY-SA 3.0). Integrability widens this in three ways:
+**How it broadens 3rd-ed. interoperability.** SAiP 3rd ed. ch. 6 defines *interoperability* as the
+degree to which two or more **systems** can usefully exchange meaningful information through
+interfaces (syntactic plus semantic), with two concerns: *discovery* and *handling of the response*
+(summary adapted from the Wikipendium TDT4240 compendium, CC BY-SA 3.0). Its tactics were only
+**Locate** (discover service) and **Manage interfaces** (orchestrate, tailor interface).
+Integrability widens this in three ways:
 
 1. **Scope.** It covers components *inside* one system as well as external systems.
 2. **Time.** It is judged at design, integration and deployment time as well as at runtime.
@@ -185,7 +192,7 @@ one-line entry under ch. 12 Other QAs; the Wikipendium example is a missile syst
 | Unsafe-state avoidance | Substitution (use a simpler, safer mechanism, e.g. a hardware interlock instead of software); predictive model | Stop the hazard from arising |
 | Unsafe-state detection | Timeout; timestamp; condition monitoring; sanity checking; comparison (of redundant outputs) | Notice that the system is at or near an unsafe state |
 | Containment: redundancy | Replication; functional redundancy; analytic redundancy | Make sure one faulty element cannot decide the outcome alone |
-| Containment: limit consequences | Abort; graceful degradation | Reduce the harm while the fault persists |
+| Containment: limit consequences | Abort; degradation (cf. availability's *graceful degradation*; the safety chapter's exact name is unverified) | Reduce the harm while the fault persists |
 | Containment: barrier | Firewall; interlock | Physically or logically block the hazard from propagating |
 | Recovery | Rollback; repair state; reconfiguration | Get back to a known safe state |
 
@@ -194,11 +201,19 @@ The difference is the goal: availability keeps the service running, while safety
 
 ## 6. Working with other QAs (4th ed. ch. 14) [confirmed chapter title]
 
-This is the successor to 3rd-ed. ch. 12. It covers QAs without their own chapter (e.g. variability,
-portability, scalability, development distributability, monitorability) and how to define a new
-QA with its own general scenario and tactics. Scalability, portability and similar QAs are still
-often explained as special cases of modifiability or performance. Mobility moved into ch. 18
-Mobile Systems. The exact list of QAs in ch. 14 is not verified here.
+This is the successor to 3rd-ed. ch. 12 *Other Quality Attributes*. The 3rd-ed. chapter listed QAs
+without their own chapter: variability, portability, development distributability, scalability,
+deployability, mobility, monitorability and safety. Of these, deployability and safety now have
+their own 4th-ed. chapters (5 and 10).
+
+The 4th-ed. ch. 14 is organised differently [verify in the book]: it covers QAs of the architecture
+itself (e.g. conceptual integrity, buildability), business qualities, whether to use standard QA
+lists such as ISO/IEC 25010, and how to bring a new "X-ability" into the fold by writing its own
+general scenario and tactics. Scalability, portability and similar QAs are still often explained
+as special cases of modifiability or performance.
+
+Mobility, a short entry in 3rd-ed. ch. 12, now has a full chapter of its own (ch. 18 Mobile Systems)
+[confirmed chapter title]; how much of the old material carried over is not verified.
 
 ## 7. Tactic renames and additions (3rd → 4th ed.)
 
@@ -209,15 +224,15 @@ tactic names.
 |---|---|---|---|
 | Availability | Active redundancy (hot spare), Passive redundancy (warm spare), Spare (cold spare) | **Redundant spare** | Three tactics merged into one, with hot/warm/cold as variants |
 | Availability | Degradation | **Graceful degradation** | Renamed |
-| Performance | Manage sampling rate | **Manage work requests** | Renamed and broadened (also admission control and rate limiting) |
+| Performance | Manage sampling rate | **Manage work requests** | Renamed (scope unverified) |
 | Performance | Reduce overhead | **Reduce computational overhead** | Renamed |
-| Performance | Increase resource efficiency | **Increase efficiency of resource usage** | Renamed |
-| Security | Detect message delay | **Detect message delivery anomalies** | Renamed |
+| Performance | Increase resource efficiency | **Increase efficiency of resource usage** | Renamed (from memory only; not in our sources, check before use) |
+| Security | Detect message delay | **Detect message delivery anomalies** | Renamed (from memory only; not in our sources, check before use) |
 | Security | (none) | **Validate input** | Added under resist attacks |
 | Security | Lock computer | **Restrict login** | Renamed |
 | Security | Change default settings | **Change credential settings** | Renamed |
-| Security | Maintain audit trail (recover) | Audit and nonrepudiation under recover | Regrouped |
-| Modifiability | Split module, increase semantic coherence | Split module and **Redistribute responsibilities** under increase cohesion | Added |
+| Security | Maintain audit trail (recover from attacks) | **Audit**; **Nonrepudiation** | Renamed to Audit; Nonrepudiation added (both under recover from attacks) |
+| Modifiability | Reduce size of a module: Split module; Increase cohesion: Increase semantic coherence | Increase cohesion: Split module, **Redistribute responsibilities** | Category "Reduce size of a module" removed; split module moved into increase cohesion; increase semantic coherence renamed to redistribute responsibilities |
 | Modifiability | Refactor (under reduce coupling) | No longer a separate tactic | Removed or folded in |
 | Interoperability → Integrability | Locate / Manage interfaces | Limit dependencies / Adapt / Coordinate | Regrouped and extended (see §4) |
 
@@ -227,18 +242,19 @@ Testability and usability tactics are largely unchanged in name.
 
 3rd ed. had a separate pattern catalogue in ch. 13 (Architectural Tactics and Patterns: layered,
 broker, MVC, pipe-and-filter, client-server, P2P, SOA, publish-subscribe, shared-data, map-reduce,
-multi-tier). The **4th ed. has no such chapter** [confirmed chapter title: there is none in the ToC]. Patterns are
+multi-tier). The **4th ed. has no such chapter** (confirmed from the InformIT table of contents: no such chapter). Patterns are
 presented inside the QA chapter they mainly serve. **The assignments below are approximate:
 verify them in the book before quoting a chapter number.**
 
 | QA chapter (4th ed.) | Patterns discussed there (approximate) |
 |---|---|
 | 4 Availability | Active/passive redundancy, TMR, circuit breaker, process pairs, forward error recovery |
-| 5 Deployability | Microservices; blue/green, rolling upgrade, canary |
+| 5 Deployability | Microservice architecture; complete replacement (blue/green, rolling upgrade); partial replacement (canary testing, A/B testing) |
+| 6 Energy Efficiency | (verify in the book; not listed here) |
 | 7 Integrability | Adapter/wrapper, bridge, mediator, SOA, dynamic discovery |
 | 8 Modifiability | Client-server, plug-in (microkernel), layers, publish-subscribe |
 | 9 Performance | Service mesh, load balancer, throttling, map-reduce |
-| 10 Safety | Redundant sensors, monitor-actuator, separated safety |
+| 10 Safety | Redundant sensors, monitor-actuator, separated safety, design assurance levels |
 | 11 Security | Intercepting validator, intrusion prevention system |
 | 12 Testability | Dependency injection, strategy, intercepting filter |
 | 13 Usability | MVC, observer, memento |
@@ -277,4 +293,5 @@ Exam drills: [exam-prep.md](exam-prep.md). Foundations and the QA/tactic/pattern
 https://www.informit.com/store/software-architecture-in-practice-9780136885887); 3rd ed., 2013.
 Sections marked "Adapted from the Wikipendium TDT4240 compendium" draw on
 https://www.wikipendium.no/TDT4240_Software_Architecture (CC BY-SA 3.0, Wikipendium contributors),
-paraphrased and changed.*
+paraphrased and changed. Full attribution (contributor names, page history, licence, changes):
+[../CREDITS.md](../CREDITS.md).*

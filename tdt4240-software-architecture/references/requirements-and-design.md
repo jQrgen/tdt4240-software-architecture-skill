@@ -1,14 +1,16 @@
 # ASRs, eliciting quality requirements, and designing an architecture
 
-Covers SAiP 4th ed. (2021) ch. 19 (ASRs), ch. 20 (Designing an Architecture) and ch. 23 (Architecture Debt). Also covers the 3rd-ed. (2013) equivalents ch. 16 (→ 4th ch. 19) and ch. 17 (→ 4th ch. 20), plus 3rd-ed. material with no same-titled 4th-ed. chapter: ch. 13, 14, 15, 19, 20, 22 and 25 (CBAM, ch. 23, is in `evaluation.md`). Chapter numbers come from the two tables of contents. No page numbers are given on purpose. NTNU has not published which edition or chapters are on this year's list, so tell students to check Leganto or Blackboard.
+Covers SAiP 4th ed. (2021) ch. 19 (ASRs), ch. 20 (Designing an Architecture) and ch. 23 (Architecture Debt). Also covers the 3rd-ed. (2013) equivalents ch. 16 (→ 4th ch. 19) and ch. 17 (→ 4th ch. 20), plus 3rd-ed. material with no same-titled 4th-ed. chapter: ch. 13, 14, 15, 19, 20, 22 and 25 (CBAM, ch. 23, is in [evaluation.md](evaluation.md)). Chapter numbers come from the two tables of contents. No page numbers are given on purpose. NTNU has not published which edition or chapters are on this year's list, so tell students to check Leganto or Blackboard.
 
-Related files: per-QA general scenarios and tactics are in `quality-attributes-classic.md` and `quality-attributes-4th-edition.md`. The pattern catalogue is in `architectural-patterns.md`. Views and rationale are in `documentation.md`. ATAM and CBAM are in `evaluation.md`. The project templates are `templates/requirements-document.md` and `templates/architecture-document.md`.
+Related files: per-QA general scenarios and tactics are in [quality-attributes-classic.md](quality-attributes-classic.md) and [quality-attributes-4th-edition.md](quality-attributes-4th-edition.md). The pattern catalogue is in [architectural-patterns.md](architectural-patterns.md). Views and rationale are in [documentation.md](documentation.md). ATAM and CBAM are in [evaluation.md](evaluation.md). The project templates are [../templates/requirements-document.md](../templates/requirements-document.md) and [../templates/architecture-document.md](../templates/architecture-document.md).
 
-Parts adapted from the Wikipendium TDT4240 compendium (CC BY-SA 3.0), <https://www.wikipendium.no/TDT4240_Software_Architecture>. Its ASR section is a single paragraph, so the QAW, utility tree, PALM and ADD material here comes from the textbook.
+Parts (sections 1, 2 and 7) adapted and modified from the Wikipendium TDT4240 compendium by its contributors (CC BY-SA 3.0; this adaptation CC BY-SA 4.0), <https://www.wikipendium.no/TDT4240_Software_Architecture>; full author list, history link and changes in [../CREDITS.md](../CREDITS.md). The compendium's ASR section is a single paragraph, so the QAW, utility tree, PALM and ADD material here comes from the textbook.
 
 ---
 
 ## 1. Three kinds of requirement
+
+**Where:** 4th ed. ch. 3; 3rd ed. ch. 4 (Understanding Quality Attributes). ASRs: 4th ed. ch. 19; 3rd ed. ch. 16.
 
 | Kind | What it says | Example (multiplayer mobile game) | Architect's freedom |
 |---|---|---|---|
@@ -19,7 +21,7 @@ Parts adapted from the Wikipendium TDT4240 compendium (CC BY-SA 3.0), <https://w
 **Constraints are given, not chosen.** They come from outside the design (the course, the customer, the organisation, law, or an existing platform). Rules for students:
 - List constraints separately from decisions. If the team *chose* Firebase, that is a decision and needs rationale. If the course *mandates* it, it is a constraint. Never defend a decision by calling it a constraint.
 - A constraint still has architectural consequences, so record them (for example, "the COTS framework owns the game loop, so our code runs inside its `render()` callback"). Course feedback asks for the COTS section to describe technical and architectural constraints, interfaces you must implement, and the effect on control flow.
-- Tip from the MR 853 model document: use a table with columns `# | Constraint | Consequence`.
+- Tip from the wallywallet MR 853 architecture description (a real-world example outside the syllabus; see [documentation.md §6](documentation.md#6-worked-real-world-example-wallywallet-mr-853), <https://gitlab.com/wallywallet/wallet/-/merge_requests/853>): use a table with columns `# | Constraint | Consequence`.
 
 ## 2. Architecturally significant requirements (ASRs)
 
@@ -73,7 +75,7 @@ A facilitated, stakeholder-centred method from the SEI. It elicits QA requiremen
 
 ## 4. The utility tree
 
-A top-down way to organise and prioritise QA requirements. It is also ATAM step 5 (see `evaluation.md`).
+A top-down way to organise and prioritise QA requirements. It is also ATAM step 5 (see [evaluation.md](evaluation.md)).
 
 ```
 Utility                               (root: overall "goodness" of the system)
@@ -98,13 +100,17 @@ Each leaf gets two ratings, each H/M/L:
 | Modifiability | Backend portability | The team replaces the backend service with another provider in at most 2 person-weeks, without changing game-logic or UI code | (M, H) |
 | Availability | Lost connection | When a player's network drops for 10 s during a match, the client reconnects and resumes the same match state with no lost moves | (H, H) |
 | Usability | Learning | A first-time player completes the tutorial and starts a match within 3 minutes, without external help, in 90% of test sessions | (M, L) |
-| Security | Cheating | When a modified client sends an illegal move, it is rejected server-side and logged in 100% of cases | (M, M) |
+| Security | Cheating | During a normal match (environment), a modified client (source) sends an illegal move; the server rejects and logs it in 100% of cases | (M, M) |
+
+Leaves are abbreviated. In the requirements document, expand each into the six-part table of section 6.
 
 Reading it: design effort goes first to move latency and reconnection (H,H), then backend portability. That ordering should show up in the tactics and rationale sections of the architecture document.
 
 ## 5. PALM (a short mention)
 
-**PALM (Pedigreed Attribute eLicitation Method)** is the SEI method in 3rd ed. ch. 16 for eliciting business goals from stakeholders (typically senior management), in a workshop of roughly a day. Business goals are captured in a structured *business-goal scenario*: who holds the goal, what it is about, how it is measured, and its "pedigree" (where it came from and how much it is worth). Each goal is then linked to the QA requirements it implies. Stakeholders can also be prompted with a standard catalogue of business-goal categories. The purpose is to make QA requirements traceable to real business reasons rather than stated in a vacuum. (One source used during research expanded PALM as "Pragmatic Architecture Lifecycle Method"; the SEI expansion is the one above. Check the exact number of scenario fields in the edition you use.)
+**PALM (Pedigreed Attribute eLicitation Method)** is the SEI method in 3rd ed. ch. 16 for eliciting business goals from stakeholders (typically senior management), in a workshop. Business goals are captured in a structured *business-goal scenario*: who holds the goal, what it is about, how it is measured, and its "pedigree" (where it came from and how much it is worth). Each goal is then linked to the QA requirements it implies. Stakeholders can also be prompted with a standard catalogue of business-goal categories. The purpose is to make QA requirements traceable to real business reasons rather than stated in a vacuum.
+
+**Where:** 3rd ed. ch. 16; the 4th ed. covers business goals as a source of ASRs in ch. 19 (check whether PALM is named there in your edition). Check the number of business-goal scenario fields in your edition.
 
 ## 6. Six-part QA scenarios
 
@@ -117,9 +123,9 @@ Reading it: design effort goes first to move latency and reconnection (H,H), the
 | **Response** | What does the system do? | Pauses input, shows "reconnecting", retries, resynchronises match state |
 | **Response measure** | How is the response judged, in numbers? | Match resumes within 5 s of the network returning; 0 moves lost |
 
-- **General scenario:** system-independent. It lists the possible values of each part for a QA (for example, availability stimulus: omission, crash, incorrect timing, incorrect response). The general scenarios are catalogued in the QA chapters; see `quality-attributes-classic.md` (3rd ed.) and `quality-attributes-4th-edition.md` (4th ed.).
+- **General scenario:** system-independent. It lists the possible values of each part for a QA (for example, availability stimulus: omission, crash, incorrect timing, incorrect response). The general scenarios are catalogued in the QA chapters; see [quality-attributes-classic.md](quality-attributes-classic.md) (3rd ed.) and [quality-attributes-4th-edition.md](quality-attributes-4th-edition.md) (4th ed.).
 - **Concrete scenario:** a general scenario instantiated for one system, with specific values. The project requirements document needs concrete ones.
-- **The response measure must be measurable** (a number with a unit and a threshold): time, percentage, count of changed modules, person-hours, FPS. "Fast", "easy", "robust" and "user-friendly" are not measures. As the MR 853 document puts it, a goal without a measurable response is an aspiration, not a requirement.
+- **The response measure must be measurable** (a number with a unit and a threshold): time, percentage, count of changed modules, person-hours, FPS. "Fast", "easy", "robust" and "user-friendly" are not measures. A goal without a measurable response is an aspiration, not a requirement.
 - Common course mistakes: mixing up usability and performance scenarios (perceived speed of a UI task can be either; decide whether the concern is *timing* (performance) or *user effort, learning or error recovery* (usability)); writing the tactic into the response ("uses a cache"); and leaving the environment empty.
 
 ## 7. Tactics vs patterns
@@ -131,14 +137,16 @@ Reading it: design effort goes first to move latency and reconnection (H,H), the
 | Example | Heartbeat, Encapsulate, Introduce concurrency, Authenticate actors | Client-server, Layered, Publish-subscribe, MVC, Broker |
 | Trade-offs | Usually focused on one QA; may hurt others | Explicitly trades several QAs at once |
 
-**A pattern is a {context, problem, solution} triple** (3rd ed. ch. 13; adapted from the Wikipendium compendium, CC BY-SA 3.0):
-- **Context:** a recurring situation in the world that gives rise to a problem.
-- **Problem:** the problem that arises in that context, often including the QAs to be met.
-- **Solution:** element types, interaction mechanisms or connectors, their topological layout, and semantic constraints on topology, behaviour and interaction.
+**A pattern is a {context, problem, solution} triple** (3rd ed. ch. 13; adapted from the Wikipendium compendium, CC BY-SA 3.0). Ask three questions:
+- **Context:** when does this situation keep coming up?
+- **Problem:** what goes wrong there, and which QAs are at stake?
+- **Solution:** which element and connector types, how they are laid out, and what constraints they must obey.
 
-Patterns are discovered in practice, not invented, and real systems use several at once.
+Worked triple, Client-server for the game: *context* = many phones share one match; *problem* = consistent shared state plus cheat resistance; *solution* = clients send requests, and an authoritative server owns and validates the match state.
 
-**Augmenting a pattern with tactics.** Applying a pattern has side effects on other QAs. Further tactics repair these, and the result is the pattern *augmented* by tactics. Example: Broker gives modifiability and interoperability, but it creates a single point of failure (availability) and adds a hop (performance). The fixes are *active or passive redundancy* for the broker, plus *heartbeat* to detect its failure, and possibly *maintain multiple copies of computations* (a broker pool) with load balancing. Each added tactic can in turn bring new side effects, so you keep going until the side effects are acceptable. In ch. 13 the 3rd ed. works an example like this. The 4th ed. no longer has a separate tactics-and-patterns chapter; patterns appear inside each QA chapter.
+Patterns are harvested from systems that already work rather than invented from scratch, and a real system usually combines several.
+
+**Augmenting a pattern with tactics.** Applying a pattern has side effects on other QAs. Further tactics repair these, and the result is the pattern *augmented* by tactics. Example: Broker gives modifiability and interoperability, but it creates a single point of failure (availability) and adds a hop (performance). The fixes are *active or passive redundancy* for the broker, plus *heartbeat* to detect its failure, and possibly *maintain multiple copies of computations* (a broker pool) with load balancing. Each added tactic can in turn bring new side effects, so you keep going until the side effects are acceptable. In ch. 13 the 3rd ed. works an example like this. Tactics also combine with each other: applying one (e.g. ping/echo) can create side effects on other QAs that further tactics address. The 4th ed. has no separate tactics-and-patterns chapter; patterns appear to be discussed alongside the QA chapters (verify in your edition).
 
 **Do not list patterns as tactics** in the project document. "MVC" goes under patterns; "Encapsulate", "Use an intermediary" and "Restrict dependencies" go under modifiability tactics. The rationale connects the two.
 
@@ -161,6 +169,13 @@ ADD is iterative. Each iteration takes a few drivers, picks the elements to refi
 | 7 | **Perform analysis of the current design and review the iteration goal and achievement of the design purpose** |
 | - | Iterate from step 2 until the design purpose is met or budget runs out |
 
+**3rd ed. ch. 17 formulation** (paraphrased; *verify against the book*):
+1. Choose an element of the system to design (the whole system at first).
+2. Identify the ASRs for that element.
+3. Generate a design solution for it (patterns and tactics).
+4. Inventory the remaining requirements and select the input for the next iteration.
+5. Repeat steps 1-4 until all ASRs are satisfied.
+
 Exam tips: be able to list the steps, and explain why ADD is driven by QAs rather than functionality (functionality can be delivered by almost any structure; QAs cannot).
 
 **Worked iteration (the game from section 4):**
@@ -169,29 +184,29 @@ Exam tips: be able to list the steps, and explain why ADD is driven by QAs rathe
 |---|---|
 | Drivers | Move latency (H,H), reconnection (H,H); constraints: libGDX, Android, hosted backend |
 | Element to refine | The whole system |
-| Design concepts | Client-server with an authoritative server-side match state; *Introduce concurrency* (networking off the render thread); *Retry* and *State resynchronization* for reconnection; *Use an intermediary* (a backend interface) for portability |
+| Design concepts | Client-server with an authoritative server-side match state; *Introduce concurrency* (networking off the render thread); *Retry* and *State resynchronization* for reconnection; *Encapsulate* / *Abstract common services* (a `NetworkService` interface) for portability, with an adapter as the *Use an intermediary* for the Firebase implementation |
 | Instantiate | Client: `GameScreen`, `MatchController`, `NetworkService` interface, `FirebaseNetworkService` implementation; server: match document or record plus validation rules/functions |
 | Views and decisions | Process view (render thread vs network callbacks); physical view (phone, backend, network type); decision records with rejected alternatives (for example peer-to-peer rejected for cheating and NAT reasons) |
 | Analysis | Walk the latency and reconnection scenarios through the sketch. Open issue: the cost of a round-trip per move; that becomes the next iteration's driver |
 
 ## 9. Related 3rd-edition topics (no 4th-ed. chapter of the same title)
 
-Each item below is 3rd-ed. material. **Check whether it is on this year's list.** The 2015 and 2016 exams asked short questions on several of them (ADD, performance-model parameters, erosion, keeping code and architecture consistent, reconstruction, product lines, availability models).
+Each item below is 3rd-ed. material. **Check whether it is on this year's list.** The public 2015 and 2016 exams each had about 20 short questions (see [exam-prep.md](exam-prep.md)); topics like these suit that format, but check the exam archive rather than assuming which ones were asked.
 
-**Architecture in agile projects (3rd ed. ch. 15).** The question is how much up-front architecture a project needs. The chapter uses Boehm and Turner's analysis: the right amount of up-front architecture work grows with system size, complexity and volatility. Small, stable projects need little, large ones much more. Agile and architecture are compatible. Useful practices: an initial architectural skeleton, spikes to explore risky decisions, and letting the architecture evolve with each iteration while ASRs are known early. Avoid both extremes: "big design up front" and "no design".
+**Architecture in agile projects (3rd ed. ch. 15).** The question is how much up-front architecture a project needs. The chapter uses Boehm and Turner's analysis: the best amount of up-front architecture grows with system size and complexity, and is highest when requirements are stable and well understood. When requirements are volatile or vague, sketch a candidate architecture quickly and evolve it. Small projects need little; large, stable ones much more. Agile and architecture are compatible. Useful practices: an initial architectural skeleton, spikes to explore risky decisions, and letting the architecture evolve with each iteration while ASRs are known early. Avoid both extremes: "big design up front" and "no design".
 
 **QA modelling and analysis (3rd ed. ch. 14).**
 - **Performance, queuing model:** requests arrive, queue, get scheduled and are serviced. The parameters needed are the arrival rate of events, the queuing discipline, the scheduling algorithm, the service time for events, the network topology, the network bandwidth, and the routing algorithm. Results are latency and throughput estimates.
 - **Availability, Markov model:** states (for example "both up", "one failed", "both failed") with transition rates (failure rate λ, repair rate μ). Solving it gives steady-state availability. Basic formula: availability = MTBF / (MTBF + MTTR).
 - The chapter also covers the choice of analysis technique across the life cycle: thought experiments, back-of-the-envelope analysis, checklists, analytic models, simulation, prototypes, and measurement of the running system. Cost and confidence rise in that order.
 
-**Architecture, implementation and testing (3rd ed. ch. 19).** The concern is keeping code and architecture consistent. Techniques include embedding the design in the code (package and module structure that mirrors architectural elements, annotations or naming), frameworks and code templates that force architectural conventions, and synchronising documentation and code at defined points (for example, at the end of an iteration or release). If you do not synchronise, record known deviations. Testing: the architecture defines the units and the integration order, and gives testers the interfaces to test against. This links to the course project's grading on consistency between code and architecture. A modern equivalent (outside the syllabus) is automated fitness functions in CI, as in the MR 853 document.
+**Architecture, implementation and testing (3rd ed. ch. 19).** The concern is keeping code and architecture consistent. Techniques include embedding the design in the code (package and module structure that mirrors architectural elements, annotations or naming), frameworks and code templates that force architectural conventions, and synchronising documentation and code at defined points (for example, at the end of an iteration or release). If you do not synchronise, record known deviations. Testing: the architecture defines the units and the integration order, and gives testers the interfaces to test against. This links to the course project's grading on consistency between code and architecture. A modern equivalent (outside the syllabus) is automated fitness functions in CI, as in the wallywallet MR 853 document (section 1).
 
 **Architecture reconstruction and conformance (3rd ed. ch. 20).** Reconstruction recovers the as-built architecture from an existing system. Activities: raw view extraction (static parsing, dynamic tracing, build files), database construction, view fusion (combining static and dynamic information), and analysis. **Conformance checking** compares the reconstructed (as-built) architecture with the intended (as-designed) one. **Erosion** (also called drift or decay) is the growing gap between the two, caused by changes that ignore the architecture's rules. An example is an upward layer dependency.
 
 **Software product lines (3rd ed. ch. 25).** A product line is a set of systems built from a shared set of core assets, with the architecture as the most important one. **Variation points** are the places where products differ. They are realised by **variation mechanisms**, for example inclusion or omission of elements, build-time selection, parameterisation or configuration, inheritance or specialisation, component substitution, and plug-ins. Variability is a special case of modifiability.
 
-**Management and governance (3rd ed. ch. 22) [verify against the book].** Check whether it is on this year's list. The chapter looks at architecture from the project-management side. The architect owns the technical decisions and the project manager owns budget, schedule and staffing, and the two must work closely together (for example, the architecture's module structure feeds the work breakdown and the estimates). The material is organised around planning, organising, implementing and measuring a project. Organising includes global or distributed development, where module boundaries become team boundaries and interfaces must be stable and well documented because coordination is expensive. Measuring covers tracking progress and architecture-related metrics. **Governance** covers who may make and change architecture decisions and how conformance is checked, for example an architecture review board, design reviews and conformance checks of code against the architecture. The 4th-ed. counterpart is closest to ch. 24 (the role of the architect in projects), see `platforms-and-emerging-topics.md` §8.
+**Management and governance (3rd ed. ch. 22) [verify against the book].** The architect owns the technical decisions and the project manager owns budget, schedule and staffing, so the two must work closely together. Governance is about who decides on the architecture and how conformance is checked. The 4th-ed. counterpart is closest to ch. 24; see [platforms-and-emerging-topics.md §8](platforms-and-emerging-topics.md#8-the-role-of-the-architect-in-projects-4th-ed-ch-24).
 
 ## 10. Architecture debt (4th ed. ch. 23)
 

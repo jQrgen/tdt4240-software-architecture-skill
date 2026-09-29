@@ -9,14 +9,18 @@ Chapter pointers (numbering differs between editions, so always say which one yo
 | Topic | SAiP 4th ed. (2021) | SAiP 3rd ed. (2013) | Primary source |
 |---|---|---|---|
 | Documenting an architecture | ch. 22 | ch. 18 | Clements et al., *Documenting Software Architectures: Views and Beyond*, 2nd ed., Addison-Wesley, 2010 |
-| Structures and views (module / C&C / allocation) | ch. 1 | ch. 1 | same |
+| Structures and views (module / C&C / allocation) | ch. 1 | ch. 1 | Bass, Clements & Kazman (structure list); Clements et al. 2010 for view styles |
 | Quality-attribute scenarios (six parts) | ch. 3 | ch. 4 | Bass, Clements & Kazman |
 | 4+1 view model | not a chapter | not a chapter | Kruchten, IEEE Software 12(6):42-50, 1995, DOI 10.1109/52.469759 |
 | Architecture description standard | not a chapter | not a chapter | IEEE Std 1471-2000, superseded by ISO/IEC/IEEE 42010 |
 
-Related files (not repeated here): patterns per view type in `architectural-patterns.md`; ASRs and scenarios in
-`requirements-and-design.md`; ATAM and utility trees in `evaluation.md`; the course document skeleton in
-`../templates/architecture-document.md`; project advice in `course-and-project-guide.md`.
+Related files (not repeated here): patterns per view type in [architectural-patterns.md](architectural-patterns.md);
+ASRs in [requirements-and-design.md](requirements-and-design.md); the six-part scenario format and per-QA scenarios in
+[quality-attributes-classic.md](quality-attributes-classic.md) and
+[quality-attributes-4th-edition.md](quality-attributes-4th-edition.md); ATAM and utility trees in
+[evaluation.md](evaluation.md); the course document skeleton in
+[../templates/architecture-document.md](../templates/architecture-document.md); project advice in
+[course-and-project-guide.md](course-and-project-guide.md).
 
 ---
 
@@ -26,7 +30,8 @@ Related files (not repeated here): patterns per view type in `architectural-patt
 
 - **Structure**: a set of elements and their relations, as they exist in the system (or the code).
 - **View**: a *representation* of a structure (or a set of coherent elements and relations), written for stakeholders.
-  "An architecture is a complex entity that cannot be described in a one-dimensional fashion."
+  An architecture is too complex to capture in a single, one-dimensional description, so it is documented as
+  several views (SAiP 4th ed. ch. 22; 3rd ed. ch. 18; Clements et al. 2010).
 - **Principle of Views and Beyond**: *documenting an architecture = document the relevant views, then add
   documentation that applies to more than one view.*
 - Which views are "relevant" depends on who will read the documentation and what they need to do with it.
@@ -35,6 +40,8 @@ Related files (not repeated here): patterns per view type in `architectural-patt
 ### 1.2 The three view categories and the patterns that fit each
 
 Adapted from the Wikipendium TDT4240 compendium (CC BY-SA 3.0), extended with the book's structure list.
+The pattern grouping in the last column follows the SAiP 3rd ed. ch. 13 catalogue; the 4th ed. has no single pattern
+catalogue and presents patterns in the quality-attribute chapters (ch. 4-13).
 
 | Category | Elements | Shows / supports reasoning about | Typical structures | Patterns documented in it |
 |---|---|---|---|---|
@@ -161,7 +168,9 @@ logical and development views may be combined for small systems. Scenarios are u
 4. Next iteration: reassess risks, add scenarios, extend or refactor the architecture, test against the scenarios.
 5. Iterate until the architecture is stable. Scenarios thus both *drive* and *validate* the design.
 
-### 2.4 Course-specific guidance for 4+1 in TDT4240 (from published teacher feedback on group projects)
+### 2.4 Course-specific guidance for 4+1 in TDT4240
+Source: the teacher's written feedback published in one 2026 group repo (github.com/Yannic-Neu/battleships-ex).
+This is one group's feedback, not an official rubric; treat it as a strong hint of what is checked.
 - **Run-time object interactions belong in the process view**, not in the logical view. The logical view is the static
   functional decomposition.
 - The **logical view must show external components**, e.g. Firebase (or Supabase) and server-side data, and if an
@@ -214,13 +223,18 @@ a viewpoint → views consist of models → rationale explains the choices.** Vi
 Mapping to the TDT4240 architecture document: stakeholders and concerns → section "Stakeholders and concerns";
 viewpoint specifications → "Architectural viewpoints" table (with purpose = why); views → 4+1 views;
 inconsistencies → "Consistency among views"; rationale → "Architectural rationale".
-Historically, IEEE 1471 completeness was a grading criterion for the project (Wang's TOCE paper, about 2008-2010).
+The course has used IEEE 1471 as the basis for the project's architecture document (see Wang, A. I., "Extensive
+Evaluation of Using a Game Project in a Software Architecture Course", *ACM Transactions on Computing Education*
+11(1), 2011, which evaluates project years from that period). Wang's paper names IEEE 1471
+completeness as a project grading criterion in those years (see
+[course-and-project-guide.md](course-and-project-guide.md) §6); current criteria may differ, so check the assignment text.
 
 ### 3.3 Successors (context only; not TDT4240 syllabus)
 - **ISO/IEC/IEEE 42010:2011** superseded IEEE 1471. It kept the core model and added, among other things,
   **architecture frameworks** (e.g. a set of viewpoints for a domain), **architecture description languages**,
   **model kinds** (conventions for one kind of model within a viewpoint), **correspondences and correspondence rules**
-  (formalising relations between AD elements, the successor of "inconsistencies"), and explicit
+  (a formal way to express and check relations between AD elements, generalising 1471's consistency among views;
+  the AD must still record known inconsistencies), and explicit
   **architecture decisions and rationale**.
 - **ISO/IEC/IEEE 42010:2022** is a further revision with some changed terminology. Cite by year; if you rely on a
   2022 detail, check the standard itself.
@@ -269,6 +283,7 @@ structure; dynamic and deployment diagrams are supplementary.
 |---|---|---|---|---|
 | Introduction, quality goals, stakeholders | 1 | - | Scenarios | Why the system exists; what "good" means |
 | Constraints | 2 | - | - | What is not negotiable |
+| Solution strategy | 4 | - | (all; summary) | Top-level decisions and the tactics/patterns chosen per quality goal |
 | Context view | 3 | L1 System Context | Logical (external parts) | System boundary, external interfaces |
 | Building block view | 5 | L2 Container, L3 Component | Logical + Development | Static decomposition, work division |
 | Runtime view | 6 | Dynamic diagrams | Process | Behaviour, concurrency, performance |
@@ -291,7 +306,7 @@ architecturally significant decision, kept with the code.
 
 | Field | Content |
 |---|---|
-| **Title** | Short imperative noun phrase, numbered: "ADR-004: Abstract the backend behind an interface" |
+| **Title** | Short phrase, numbered. Nygard uses noun phrases ("ADR 1: Deployment on Ruby on Rails 3.0.10"); many teams use imperative titles such as "ADR-004: Abstract the backend behind an interface". Pick one style and use it throughout |
 | **Status** | Proposed / Accepted / Deprecated / Superseded by ADR-NNN |
 | **Context** | The forces at play: requirements, QAs at stake, constraints, team, technology. Value-neutral |
 | **Decision** | "We will ..." in active voice |
@@ -346,8 +361,8 @@ and patterns and show it in the relevant view (the interface appears in the logi
 ## 6. Worked real-world example: wallywallet MR 853
 
 GitLab MR https://gitlab.com/wallywallet/wallet/-/merge_requests/853 adds `docs/architecture.md`, an
-architecture description of the **Wally** wallet, a Kotlin Multiplatform app (shared Compose UI; Android, iOS,
-desktop targets). Not course material, but a complete example of applying the course concepts to a real codebase.
+architecture description of the **Wally** wallet, a Kotlin Multiplatform app whose `:shared` module (about
+27 kLOC) builds for five targets. Not course material, but a complete example of applying the course concepts to a real codebase.
 Framed as an **ISO/IEC/IEEE 42010** description, structured by **arc42**, drawn at **C4 levels 1-3**, checked against
 **4+1**, with six-part QA scenarios, named tactics (SAiP 4th ed.), Views and Beyond conventions (primary
 presentation + element catalogue + rationale) and Nygard ADRs.
@@ -359,18 +374,19 @@ What it demonstrates, and what to copy:
 | **Concern-driven stakeholder table** | Columns: stakeholder, concerns, where addressed (quality goal QG-n / section). Rows include end users, merchants/integrators, maintainers, release engineers, app-store gatekeepers, third-party server operators, security auditors | A stakeholder earns a row only by raising a concern some view answers (42010 chain) |
 | **AS-IS vs TO-BE labelling** | AS-IS statements describe the baseline commit and name the source file; TO-BE statements appear only in proposed ADRs, risks and roadmap, marked *Proposed*. An appendix pins baseline facts | Keep descriptive and prescriptive architecture apart |
 | **View map** | A table mapping each section to arc42 #, C4 level, 4+1 view and concern (as in 4.3 above) | One table shows completeness across frameworks |
-| **Intended vs actual layering** | Two diagrams side by side: committed view → view-model → repository layering vs the real call graph. Names three differences: no data layer, views bypassing view-models, and an **upward dependency** (application code calling navigation/UI), which it calls a **layer-bridging cycle**, worse than a shortcut | Layers earn their keep only if enforced; show violations explicitly |
+| **Intended vs actual layering** | Intended layering vs the real call graph, side by side, naming missing and bypassed layers and **upward dependencies** that form **layer-bridging cycles** (worse than a shortcut) | Layers earn their keep only if enforced; show violations explicitly |
 | **Six-part QA goals** | QG-1 Security, QG-2 Reliability under a hostile network, QG-3 Modifiability and testability, QG-4 Portability, QG-5 Startup and interaction responsiveness; each with source, stimulus, artifact, environment, response, numeric response measure; plus a priority order and conflict rule (security wins over responsiveness) | "A goal without a measurable response is an aspiration, not a requirement" |
 | **Tactic-argued changes** | Each quality goal lists "tactics in use" (e.g. limit access, limit exposure, retry, defer binding, specialized interfaces) and the code realising them; each proposal names its tactic | Argue design in the book's vocabulary, linked to a QG and a cost |
 | **ADRs** | ADR-001-011 reconstruct decisions in the current system (some "accepted by default, not by deliberation"); ADR-012-018 are proposals, each with QG served, costs, alternatives, migration, non-goals | Reconstructed + proposed ADRs make history and direction reviewable one by one |
-| **Risk register traced to ADRs** | Table: risk/debt, cause (ADR), impact, mitigation (ADR); ordered by expected cost (e.g. "no enforced layering", caused by the single-module ADR, mitigated by the module-split and fitness-function ADRs) | Mitigations attack causes, not symptoms |
+| **Risk register traced to ADRs** | Risks R-1 to R-11, each traced to the ADR that caused it and the ADR that mitigates it | Mitigations attack causes, not symptoms |
 | **Utility tree** | QA → refinement → scenario, rated (business importance, technical difficulty) H/M/L, and stated as usable ATAM input | (H,H) leaves are where architectural effort pays most |
 | **Fitness functions** | A proposed ADR makes rules executable as CI checks (module dependency direction, no globals in UI code, data-source types confined to the data module, coverage floor, start-up time budget); after Ford, Parsons & Kua | "A scenario with a CI gate is a requirement, and a scenario without one is a wish" |
 | **Runtime and deployment views** | Sequence diagrams per key scenario with numbered architectural observations; deployment covers both runtime allocation and the build/release pipeline | Process and physical views for a mobile app |
 
 **Citation slip to note:** the MR names SAiP **4th ed.** but cites "ch. 4" for quality-attribute scenarios. That is
 the **3rd-edition** number; in the 4th edition, scenarios are in **ch. 3** ("Understanding Quality Attributes"; ch. 4
-is Availability). Lesson for students: pick one edition and use its numbering consistently.
+is Availability). Its reference entry also gives the tactic chapters as "ch. 5-13"; in the 4th ed. the QA
+chapters with tactics run from ch. 4 (Availability) to ch. 13 (Usability). Lesson for students: pick one edition and use its numbering consistently.
 
 ---
 
@@ -418,7 +434,9 @@ Use when reviewing a TDT4240 architecture document, another group's document bef
 - Kruchten, P. "The 4+1 View Model of Architecture." *IEEE Software* 12(6):42-50, 1995. DOI 10.1109/52.469759.
 - IEEE Std 1471-2000, *IEEE Recommended Practice for Architectural Description of Software-Intensive Systems*.
 - ISO/IEC/IEEE 42010:2011 and 42010:2022, *Systems and software engineering: Architecture description*.
-- arc42: https://arc42.org/ ; C4 model: https://c4model.com/ ; Nygard ADRs: https://adr.github.io/
+- Nygard, M. "Documenting Architecture Decisions", Cognitect blog, 15 Nov 2011, https://www.cognitect.com/blog/2011/11/15/documenting-architecture-decisions
+- Wang, A. I. "Extensive Evaluation of Using a Game Project in a Software Architecture Course." *ACM Transactions on Computing Education* 11(1), 2011.
+- arc42: https://arc42.org/ ; C4 model: https://c4model.com/ ; ADR community resources: https://adr.github.io/
 - Ford, N., Parsons, R., Kua, P. *Building Evolutionary Architectures*, O'Reilly, 2017.
 - wallywallet MR 853: https://gitlab.com/wallywallet/wallet/-/merge_requests/853
-- Wikipendium contributors, "TDT4240 Software Architecture", https://www.wikipendium.no/TDT4240_Software_Architecture (CC BY-SA 3.0). Sections 1.2 and parts of 3.1 are adapted from it, with changes.
+- Wikipendium contributors, "TDT4240 Software Architecture", https://www.wikipendium.no/TDT4240_Software_Architecture (CC BY-SA 3.0). Sections 1.2 and parts of 3.1 are adapted from it, with changes, and redistributed under CC BY-SA 4.0 (permitted by BY-SA 3.0's later-version clause). Contributor list: https://www.wikipendium.no/TDT4240_Software_Architecture/history/ ; full attribution in [../CREDITS.md](../CREDITS.md).

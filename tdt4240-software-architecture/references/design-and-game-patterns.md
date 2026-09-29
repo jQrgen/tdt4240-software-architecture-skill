@@ -3,13 +3,16 @@
 Scope: the design-level patterns TDT4240 lectures and exercises use (Gamma, Helm, Johnson & Vlissides, *Design Patterns*, Addison-Wesley, 1994, "GoF"). Also Rollings & Morris ch. 17 on game architecture, the game-programming patterns groups use in the libGDX project, and a pattern-to-QA map.
 
 Cross-links:
-- Architectural patterns (Layered, MVC, Pub-Sub, Client-Server and others): `architectural-patterns.md`
-- Tactics per QA: `quality-attributes-classic.md` / `quality-attributes-4th-edition.md`
-- Coplien 1998 (pattern form, generative patterns): `architectural-patterns.md` §8
-- 4+1 views: `documentation.md`
-- Project pitfalls: `course-and-project-guide.md`
+- Architectural patterns (Layered, MVC, Pub-Sub, Client-Server and others): [architectural-patterns.md](architectural-patterns.md)
+- Tactics per QA: [quality-attributes-classic.md](quality-attributes-classic.md) / [quality-attributes-4th-edition.md](quality-attributes-4th-edition.md)
+- Coplien 1998 (pattern form, generative patterns): [architectural-patterns.md](architectural-patterns.md) §8
+- 4+1 views: [documentation.md](documentation.md) §2
+- Project pitfalls: [course-and-project-guide.md](course-and-project-guide.md) §5
+- Exam drills (Composite, Template Method, GoF categories, game loop): [exam-prep.md](exam-prep.md)
 
-> Parts of Part A and Part B are adapted from the Wikipendium TDT4240 compendium (https://www.wikipendium.no/TDT4240_Software_Architecture, CC BY-SA 3.0). They have been restructured and corrected where noted.
+> Parts of Part A and Part B are adapted from the Wikipendium TDT4240 compendium (https://www.wikipendium.no/TDT4240_Software_Architecture), originally CC BY-SA 3.0 by the Wikipendium TDT4240 authors. The adaptation is paraphrased, restructured and corrected where noted, and is shared under CC BY-SA 4.0 (a later version, which CC BY-SA 3.0 §4(b) permits for adaptations). Contributors and the list of changes: see [CREDITS.md](../CREDITS.md).
+>
+> Year tags come from the public 2015/2016 exam papers (dvikan.no archive).
 
 **Level distinction (common exam point):** a *design pattern* solves a problem inside a subsystem or module (classes and objects). An *architectural pattern* describes system-level element types and how they interact. Observer is a design pattern. MVC and Publish-Subscribe are architectural patterns, and they are often *implemented* with Observer.
 
@@ -17,7 +20,7 @@ Cross-links:
 
 ## Part A: GoF design patterns
 
-### A.1 The three categories (2016 exam asked for these)
+### A.1 The three categories (a past-exam short question, 2016)
 
 | Category | Concern | The 23 GoF patterns |
 |---|---|---|
@@ -25,11 +28,11 @@ Cross-links:
 | **Structural** | How classes and objects are composed into larger structures | Adapter, Bridge, **Composite**, Decorator, Facade, Flyweight, Proxy |
 | **Behavioral** | Algorithms, and how responsibility and communication are assigned between objects | Chain of Responsibility, **Command**, Interpreter, Iterator, Mediator, Memento, **Observer**, **State**, **Strategy**, **Template Method**, Visitor |
 
-GoF also split patterns by *scope*: **class** patterns work through inheritance and are fixed at compile time (Factory Method, Template Method, class Adapter). **Object** patterns work through composition and can change at run time (most of the others).
+GoF also split patterns by *scope*: **class** patterns work through inheritance and are fixed at compile time (Factory Method, class Adapter, Interpreter, Template Method). **Object** patterns work through composition and can change at run time (most of the others).
 
 **Correction to Wikipendium:** the compendium files "Template" under *Structural*. That is wrong. Template Method is **behavioral** in GoF.
 
-Pattern description, per GoF: name, intent, also known as, motivation, applicability, structure, participants, collaborations, consequences, implementation, sample code, known uses, related patterns. For the *three-part* description the 2016 exam asked about, use context / problem / solution (SAiP). Coplien's Alexandrian form is in `architectural-patterns.md` §8.
+Pattern description, per GoF: name, intent, also known as, motivation, applicability, structure, participants, collaborations, consequences, implementation, sample code, known uses, related patterns. For the past-exam question on the three parts of a pattern description (2016), the safest answer is SAiP's context / problem / solution; the expected answer is not published. Do not confuse it with GoF's four essential elements: name, problem, solution, consequences. Coplien's Alexandrian form is in [architectural-patterns.md](architectural-patterns.md) §8.
 
 ### A.2 Per-pattern cards
 
@@ -117,6 +120,7 @@ class LightTheme implements ThemeFactory {
 
 - **libGDX use:** UI themes/skins. A backend family, such as `FirebaseBackendFactory` or `LocalBackendFactory` producing matching `AuthService` + `LobbyService` + `LeaderboardService` (for example a fake backend for tests or desktop). Platform families, injected from the `android`/`lwjgl3` launcher.
 - **Consequences** (Wikipendium's MySQL/Oracle connection-factory example is the same idea): + swapping a whole family is one change, and family consistency is enforced. − adding a new *kind* of product changes every factory.
+- **Pitfalls:** using it when there is only one product family (a Simple Factory or plain constructor is enough). Letting the factory grow into a service locator that everything reaches into, which hides dependencies just as a Singleton does. Mixing products from two families by creating some objects directly instead of through the factory.
 
 #### Observer (behavioral)
 
@@ -159,7 +163,7 @@ class GameStateManager {                   // Context
     private final Deque<GameState> states = new ArrayDeque<>();
     void push(GameState s) { states.push(s); }
     void pop()  { states.pop().dispose(); }
-    void set(GameState s) { pop(); push(s); }
+    void set(GameState s) { if (!states.isEmpty()) states.pop().dispose(); states.push(s); }
     void update(float dt) { states.peek().update(dt); }
     void render(SpriteBatch sb) { states.peek().render(sb); }
 }
@@ -186,30 +190,31 @@ class MenuState extends GameState {
   ConcreteClass overrides only the primitives and the chosen hooks.
 
 ```java
-abstract class Minigame {
-    public final void playRound() {        // template method: fixed skeleton
-        setup();                            // primitive (must override)
-        showIntro();                        // hook (may override)
-        while (!isOver()) { step(); }       // primitives
-        int s = computeScore();             // primitive
-        if (shouldSubmit(s)) submit(s);     // hook + invariant step
+abstract class AbstractScreen extends ScreenAdapter {
+    protected final Stage stage = new Stage();
+    @Override public final void render(float dt) {   // template method: fixed per-frame skeleton
+        ScreenUtils.clear(0, 0, 0, 1);               // invariant step
+        if (!isPaused()) update(dt);                 // hook + primitive
+        draw();                                      // primitive (must override)
+        stage.act(dt); stage.draw();                 // invariant step (HUD)
+        afterFrame();                                // hook (may override)
     }
-    protected abstract void setup();
-    protected abstract boolean isOver();
-    protected abstract void step();
-    protected abstract int computeScore();
-    protected void showIntro() {}                            // hook: default no-op
-    protected boolean shouldSubmit(int s) { return s > 0; }  // hook: default policy
-    private void submit(int s) { Leaderboard.get().submit(s); }  // invariant
+    protected abstract void update(float dt);
+    protected abstract void draw();
+    protected boolean isPaused() { return false; }   // hook: default policy
+    protected void afterFrame() {}                   // hook: default no-op
 }
+// One skeleton run per render() call. Do not put a blocking while-loop in a
+// template method: it would freeze libGDX's render thread.
 ```
 
-- **Exam class diagram (2015 asked for one):** draw `AbstractClass` with `templateMethod()` (note: *calls primitiveOp1(), primitiveOp2()*) and abstract `primitiveOp1()` and `primitiveOp2()`. Draw `ConcreteClass` inheriting from it and implementing those two operations. Mark the hook as a non-abstract overridable method.
-- **libGDX use:** a base `AbstractScreen` whose `render(delta)` does clear → `update(delta)` → `draw()` → `stage.act/draw`. A turn skeleton for turn-based games, or a level-loading pipeline.
+- **Exam class diagram (the 2015 paper asked for one):** draw `AbstractClass` with `templateMethod()` (note: *calls primitiveOp1(), primitiveOp2()*) and abstract `primitiveOp1()` and `primitiveOp2()`. Draw `ConcreteClass` inheriting from it and implementing those two operations. Mark the hook as a non-abstract overridable method.
+- **libGDX use:** a base `AbstractScreen` as in the sketch (clear → `update(delta)` → `draw()` → `stage.act/draw`). A turn skeleton for turn-based games (one phase step per frame or per event), or a level-loading pipeline.
 - **Consequences:** + code reuse, and the base class controls the extension points (inversion of control). − inheritance-bound (class scope), and deep hierarchies get brittle. Strategy is the composition-based alternative.
-- The Wikipendium zoo-animal example shows only abstract-class inheritance and **no** algorithm skeleton, so it does not illustrate Template Method.
+- **Pitfalls:** forgetting `final` on the template method, so a subclass overrides the skeleton itself. Too many hooks, which makes the call order hard to follow. Overriding a hook that has a real default body without calling `super`, when the base behaviour is still needed.
+  - *Note:* the Wikipendium zoo-animal example shows only abstract-class inheritance and **no** algorithm skeleton, so it does not illustrate Template Method.
 
-#### Composite (structural; 2016 exam: "when to use Composite")
+#### Composite (structural; past-exam question "when to use Composite", 2016)
 
 - **Intent:** compose objects into **tree structures** for part-whole hierarchies, and let clients treat single objects and compositions **uniformly**.
 - **Use it when:** (1) you need to represent part-whole hierarchies, and (2) clients should ignore the difference between leaves and composites, calling the same operation on both, for example operations that recurse over the tree such as draw, update, move or compute total.
@@ -233,6 +238,7 @@ class GroupNode implements Node {                          // Composite
 
 - **libGDX use:** scene2d is a Composite (`Actor` is the component, `Group` the composite, `Stage` the root). Also menus with submenus, multi-part ships, and UI layouts.
 - **Consequences:** + simple clients, and new component kinds are easy to add. − the design can be *too general*: it is hard to restrict what a composite may contain. There is also a transparency vs safety trade-off: declaring `add()` on Component makes leaves carry meaningless methods.
+- **Pitfalls:** cycles, or one child added to two parents (it gets drawn and moved twice); check or reparent on `add()`, as scene2d's `Group.addActor` does. Leaves that throw on `add()` when you choose transparency, which turns a design choice into run-time errors. Deep or very wide trees traversed every frame, which costs time per frame; cull or cache where you can.
 
 ### A.3 Also common in projects (brief)
 
@@ -240,7 +246,7 @@ class GroupNode implements Node {                          // Composite
 |---|---|---|---|
 | **Command** | Behavioral | Encapsulate a request as an object, so you can queue, log, undo or send it | Map input to `MoveCommand`/`FireCommand`; send moves to the backend as serialised commands; undo in puzzle games; replays |
 | **Strategy** | Behavioral | A family of interchangeable algorithms behind an interface, chosen by the client | AI difficulty (`EasyAI`, `HardAI`), scoring rules, movement behaviours; swappable at run time |
-| **Adapter** | Structural | Convert one interface into the one clients expect | Wrap Firebase/Supabase SDKs behind an app-owned `BackendService` interface; the `core` module defines the interface and `android` supplies the adapter (Firebase has no desktop libGDX SDK) |
+| **Adapter** | Structural | Convert one interface into the one clients expect | Wrap Firebase/Supabase SDKs behind an app-owned `BackendService` interface; the `core` module defines the interface and each platform module supplies an adapter. Firebase has no official libGDX SDK, and its official client SDKs target Android/iOS/web, so the Android SDK can only be used from the `android` module; desktop builds get a fake or REST-based adapter |
 
 The backend Adapter + interface is the pattern teachers most often want justified as **modifiability and portability**: a change of backend or a desktop build touches only the adapter.
 
@@ -268,14 +274,16 @@ Steps (Wikipendium lists these three):
    - *Token interaction matrix* (verify against the text): a table with tokens on both axes. Each cell describes the interaction (or "none") of the row token with the column token. It is a systematic check that no interaction is forgotten and shows which tokens are coupled.
 3. **Build the logical view from the tokens.** Tokens become the key abstractions (classes, or entities/components). Interactions become methods, collision handlers or events. Clusters of strongly interacting tokens suggest subsystems. The book also refines tokens by merging or specialising them; verify the exact steps.
 
-**Worked mini-example (Asteroids-like game):**
+**Worked mini-example (Asteroids-like game).** Illustrative example written for this guide, not the book's own worked example (the book analyses its own example game; verify against the text). Tokens go on both axes; each cell names the interaction and the event it raises.
 
 | ↓ acts on → | Ship | Asteroid | Bullet | Score |
 |---|---|---|---|---|
-| **Ship** | none | collision: ship destroyed | fires (creates) | none |
-| **Asteroid** | collision: destroys ship | none (or bounce) | none | none |
-| **Bullet** | none | hit: asteroid splits/destroyed, bullet removed | none | none |
-| **Asteroid destroyed (event)** | none | spawns smaller asteroids | none | +points |
+| **Ship** | none | collision → `ShipDestroyed` | fires (creates) → `BulletFired` | none |
+| **Asteroid** | collision → `ShipDestroyed` | none (or bounce) | none | none |
+| **Bullet** | none | hit → `AsteroidDestroyed` (split into smaller asteroids, bullet removed, +points) | none | none |
+| **Score** | none | none | none | none |
+
+Events raised: `ShipDestroyed` (lose a life, respawn or game over), `BulletFired` (sound), `AsteroidDestroyed` (spawn fragments, Score adds points). Score is a passive token: it is changed by events but acts on nothing, so its row is empty.
 
 The resulting logical view has `Ship`, `Asteroid`, `Bullet` and `ScoreModel`, plus `CollisionSystem` (handles the matrix cells) and an event such as `AsteroidDestroyed` that ScoreModel observes. This is how token analysis leads naturally to Observer or an event bus, and to ECS.
 
@@ -293,7 +301,7 @@ The resulting logical view has `Ship`, `Asteroid`, `Bullet` and `ScoreModel`, pl
 
 > **Common practice, NOT confirmed syllabus.** These show up in TDT4240 projects and teacher feedback (e.g. "specify the ECS properly"), but no public source shows them as lecture or reading-list material. Further reading (not syllabus): Robert Nystrom, *Game Programming Patterns* (Genever Benning, 2014; free at https://gameprogrammingpatterns.com/).
 
-### C.1 Game loop (2016 exam: how loop architecture affects frame rate)
+### C.1 Game loop (past-exam question on how loop architecture affects frame rate, 2016)
 
 The loop repeats: process input → update the simulation → render. Its design decides how game speed relates to frame rate.
 
@@ -303,6 +311,7 @@ The loop repeats: process input → update the simulation → render. Its design
 | **Fixed step + sleep/vsync cap** | each frame a fixed dt, then wait for the frame time | Stable if the device keeps up. If update + render exceed the budget, the game slows down |
 | **Variable timestep** | `update(delta)` with measured elapsed time | Frame rate can vary freely and speed stays consistent. Large or unstable `delta` makes physics non-deterministic (tunnelling, explosions), which hurts networked games |
 | **Fixed update, variable render** (accumulator) | accumulate real time; run `update(FIXED_DT)` while accumulator ≥ dt; render once, optionally interpolating by `alpha = acc/dt` | Deterministic simulation that is independent of render FPS. Rendering drops frames under load, not simulation steps. Risk: *spiral of death* if one update costs more than dt (clamp the frame time) |
+| **Decoupled subsystems / threads** | AI, physics or networking tick at their own (lower) rate or on a worker thread; render reads the latest state | Render FPS no longer waits for slow AI. Needs thread-safe state hand-off (double buffer, `Gdx.app.postRunnable`); harder to debug |
 
 ```java
 private float acc = 0f; private static final float DT = 1f / 60f;
@@ -314,7 +323,7 @@ private float acc = 0f; private static final float DT = 1f / 60f;
 ```
 
 - libGDX owns the loop (inversion of control): the backend calls `render()` once per frame, usually vsync-capped, and `getDeltaTime()` gives the variable delta. Box2D in particular should be stepped with a fixed dt.
-- Architectural points: the loop is a *process-view* element (thread, rate, ordering). The rate of *network sync* should be decoupled from the render rate (for example, send state at 10-20 Hz), which serves performance and cost.
+- Architectural points: the loop is a *process-view* element (thread, rate, ordering). The rate of *network sync* should be decoupled from the render rate (for example, send state at 10-20 Hz), which serves performance and cost. Name the performance tactics: *introduce concurrency* (worker threads for AI/network), *limit event response* (lower tick rates for AI and sync), and *bound execution times* (cap the work per frame, clamp the frame time).
 
 ### C.2 Update method
 
@@ -348,7 +357,7 @@ Keep two buffers: write to the back buffer while the front one is read, then swa
 |---|---|---|
 | `Game` + `Screen` | `game.setScreen(new PlayScreen(game))`; Screen lifecycle `show/render/resize/pause/resume/hide/dispose` | Built-in and simple. `setScreen` calls `hide()` on the old screen but **not** `dispose()`, so dispose it yourself |
 | `GameStateManager` stack | State pattern (A.2) with push/pop/set | Pause overlays, back navigation. Common in the pattern exercise |
-| Screen as MVC view | Screen = view, controllers handle input, models hold state | Pair it with Observer for model → view updates. See `architectural-patterns.md` |
+| Screen as MVC view | Screen = view, controllers handle input, models hold state | Pair it with Observer for model → view updates. See [architectural-patterns.md](architectural-patterns.md) |
 
 Android `pause()`/`resume()` can lose the GL context. Reload managed assets through `AssetManager` and save game state in `pause()`.
 
@@ -356,25 +365,27 @@ Android `pause()`/`resume()` can lose the GL context. Reload managed assets thro
 
 ## Part D: Pattern → quality attribute map
 
-Use this when writing the *rationale* and the *patterns* section of the architecture document. Name the QA and the tactic, not just the pattern. The tactic names follow SAiP; see the QA reference files.
+Use this when writing the *rationale* and the *patterns* section of the architecture document. Name the QA and the tactic, not just the pattern. Tactic names follow SAiP 3rd ed.; 4th-ed. renames are in parentheses and unverified (see [quality-attributes-4th-edition.md](quality-attributes-4th-edition.md) §7).
 
 | Pattern | Primary QA served | Tactic(s) it realises | Main cost / QA hurt |
 |---|---|---|---|
 | Singleton | (convenience) controlled resource use | — (not a QA tactic) | Testability, modifiability (hidden coupling) |
 | Factory Method / Simple Factory | Modifiability | Encapsulate; defer binding; restrict dependencies | Extra classes |
 | Abstract Factory | Modifiability, portability, testability (fake families) | Abstract common services; defer binding (startup) | Adding a product kind touches every factory |
-| Observer | Modifiability | Use an intermediary (interface); reduce coupling | Performance (notify cost), traceability |
+| Observer | Modifiability | Use an intermediary (the observer interface); category: reduce coupling | Performance (notify cost), traceability |
 | Event queue / message bus | Modifiability; performance (smoothing load) | Use an intermediary; defer binding (run time); bound queue size | Debuggability, latency of one frame |
-| State / GameStateManager | Modifiability; usability (clear flows) | Increase semantic coherence; split module | More classes |
-| Template Method | Modifiability (reuse), consistency | Abstract common services; refactor | Inheritance rigidity |
+| State / GameStateManager | Modifiability; usability (clear flows) | Split module; increase semantic coherence (4th ed.: redistribute responsibilities; verify) | More classes |
+| Template Method | Modifiability (reuse), consistency | Abstract common services (3rd ed. also lists refactor) | Inheritance rigidity |
 | Strategy | Modifiability, testability | Defer binding (run time); encapsulate | Extra objects |
 | Command | Usability (undo), testability (record/playback), interoperability (serialisable moves) | Undo (usability); record/playback (testability) | Class count |
 | Composite | Modifiability (uniform treatment of parts) | Abstract common services | Over-general type constraints |
 | Adapter / backend interface | **Modifiability, portability**, testability | Encapsulate; use an intermediary; abstract data sources (testability) | Small indirection overhead |
 | Hardware abstraction layer | Portability, modifiability | Abstract common services; encapsulate | Performance (lost platform tuning) |
-| **ECS** | **Modifiability and performance**; testability | Split module; increase cohesion; (performance) increase resource efficiency | Understandability, indirection |
-| Fixed-timestep game loop | Performance predictability; correctness of physics/network sync | Bound execution times; manage sampling rate (3rd ed. name) | Spiral-of-death risk; complexity |
-| Object pool | Performance (no GC hitches) | Manage resources (reuse); reduce overhead | Memory held; stale-state bugs |
+| **ECS** | **Modifiability and performance**; testability | Split module (modifiability); increase resource efficiency (performance; 4th ed.: increase efficiency of resource usage; verify) | Understandability, indirection |
+| Fixed-timestep game loop | Performance predictability; correctness of physics/network sync | Bound execution times; manage sampling rate (4th ed.: manage work requests; verify) | Spiral-of-death risk; complexity |
+| Object pool | Performance (no GC hitches) | Reduce overhead (4th ed.: reduce computational overhead; verify); falls under the category control resource demand | Memory held; stale-state bugs |
 | Double buffer | Performance (tear-free rendering), correctness of state updates | — (implementation technique) | Double memory |
 
-**Grader rules to apply (from the 2026 feedback, see `course-and-project-guide.md`):** do not list patterns as tactics. In the patterns section give the *problem* and a high-level use, and put detailed design in the views. Show where each pattern and tactic appears in each view. Tie every choice to a quality goal in the rationale.
+*Category names are not tactics.* Reduce coupling and increase cohesion (modifiability), and manage resources and control resource demand (performance), are tactic groups. In the document, name the tactic inside the group (for example *use an intermediary*, not "reduce coupling"). *Defer binding* is also a group; where the table says "defer binding (startup / run time)", name the concrete binding tactic, such as startup-time binding, runtime registration or polymorphism.
+
+**Grader rules to apply (from the 2026 feedback, see [course-and-project-guide.md](course-and-project-guide.md) §5):** do not list patterns as tactics. In the patterns section give the *problem* and a high-level use, and put detailed design in the views. Show where each pattern and tactic appears in each view. Tie every choice to a quality goal in the rationale.

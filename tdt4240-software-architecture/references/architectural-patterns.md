@@ -2,8 +2,7 @@
 
 This file covers the 11 architectural patterns in the course's classic list (SAiP 3rd ed. ch. 13). For each one it gives the quality attributes (QAs) it promotes and inhibits, a TDT4240 game example, and when not to use it. After that come a comparison table, a guide for picking a pattern from a scenario with practice questions, some newer patterns, and Coplien (1998).
 
-> Adapted from the Wikipendium TDT4240 compendium (CC BY-SA 3.0,
-> https://www.wikipendium.no/TDT4240_Software_Architecture). Corrections against the textbook are marked **[correction]**.
+> Parts of this file are adapted from the Wikipendium TDT4240 compendium (CC BY-SA 3.0), https://www.wikipendium.no/TDT4240_Software_Architecture, by its contributors (listed in ../CREDITS.md). The text has been paraphrased, restructured, corrected and extended with material from SAiP. Corrections are marked **[correction]**.
 
 Related files:
 - GoF design patterns (Observer, State and others) and game patterns: `design-and-game-patterns.md`
@@ -11,7 +10,7 @@ Related files:
 - Pattern-to-view mapping: `documentation.md`
 - Old exam questions: `exam-prep.md`
 
-**Edition note.** In SAiP 3rd ed. (2013), ch. 13 "Architectural Tactics and Patterns" has a catalogue grouped into module, C&C and allocation patterns. The 4th ed. (2021) has no separate catalogue chapter. The patterns appear to be spread across the QA chapters (for example layers and publish-subscribe under modifiability), but that placement is unverified, so check the book. The 2015 and 2016 exams used the 3rd-ed. list.
+**Edition note.** In SAiP 3rd ed. (2013), ch. 13 "Architectural Tactics and Patterns" has a catalogue grouped into module, C&C and allocation patterns. The 4th ed. (2021) has no separate catalogue chapter; instead each QA chapter ends with a Patterns section. Approximately (unverified; see [quality-attributes-4th-edition.md](quality-attributes-4th-edition.md) §8): ch. 4 Availability has the redundancy patterns and circuit breaker; ch. 5 Deployability has microservice architecture; ch. 7 Integrability has adapter, service-oriented architecture and dynamic discovery; ch. 8 Modifiability has client-server, plug-in (microkernel), layers and publish-subscribe; ch. 9 Performance has service mesh, load balancer, throttling and map-reduce; ch. 13 Usability has MVC, observer and memento. Both the 2015 and 2016 exams cite SAiP 3rd ed.; the 2015 exam's pattern-choice question used this list (see §6).
 
 ---
 
@@ -41,7 +40,7 @@ The **solution** is itself described by:
 
 **Tactics vs patterns.** A tactic is a single design decision aimed at one QA response. A pattern *bundles* tactics and often trades QAs against each other. Applying a pattern usually causes side effects, and further tactics are added to repair them (SAiP calls this "augmenting" a pattern with tactics). In the course documents, **do not list patterns as tactics**; teacher feedback flags this repeatedly.
 
-**Architectural vs design pattern.** An architectural pattern structures the whole system, or a major part of it, from element types. A design pattern (GoF) solves a problem inside a subsystem or module. Example: MVC is architectural, and Observer is a design pattern often used to implement it.
+**Architectural vs design pattern:** see `design-and-game-patterns.md` (e.g. MVC is architectural; Observer is a design pattern often used to implement it).
 
 **Categories** follow the three view types (see `documentation.md`):
 - **Module** patterns structure code and data units. The course list has one: Layered.
@@ -86,20 +85,11 @@ The **solution** is itself described by:
 - **Problem:** Structure distributed software so that users need not know the nature and location of service providers, and so that the binding between users and providers can change at runtime.
 - **Solution:**
   - Elements: **client**, **server**, **broker**, and optional client-side and server-side **proxies** that handle marshalling.
-  - The broker locates a suitable server, forwards the request, and **the reply goes back through the broker** to the client.
-  - Servers register with the broker.
-  - **[correction]** Wikipendium says the servers reply directly to the client. In the standard pattern the reply returns via the broker.
+  - Servers register with the broker. The broker locates a suitable server and forwards the request.
+  - In SAiP's description the broker mediates both request and response, so **the reply goes back through the broker**. POSA (Buschmann et al. 1996) also has a *direct-communication* variant in which the broker only locates the server and the two then talk directly. Wikipendium's "servers reply directly to the client" describes that variant, not the default.
 - **Constraints:** A client attaches only to a broker (possibly through a proxy). A server attaches only to a broker.
-- **Promotes:**
-  - modifiability: servers can be replaced, moved or added transparently;
-  - availability: a failed server can be substituted;
-  - interoperability;
-  - performance *via* load distribution.
-- **Inhibits / weaknesses:**
-  - **latency**, because of the extra hop both ways;
-  - the broker is a **single point of failure** (and a communication bottleneck);
-  - the broker is a **security target**;
-  - the system is **hard to test**.
+- **Promotes:** modifiability (servers replaced, moved or added transparently), availability (a failed server can be substituted), interoperability, and performance through spreading load over servers.
+- **Inhibits:** **latency** (extra hop both ways), **single point of failure** and bottleneck, **security target**, hard to test.
 - **Game example:** A matchmaking service that routes "find game" requests to regional game servers. Clients know only the matchmaker endpoint.
 - **Don't use when:** there are only one or two known servers, since a direct client-server link is simpler. Also avoid it for latency-critical per-frame traffic.
 
@@ -114,13 +104,7 @@ The **solution** is itself described by:
 - **Constraints:** There is at least one instance of each. The model does not depend on concrete views or controllers.
 - **Promotes:** modifiability of the UI, several synchronised views, and testability of the model without a UI.
 - **Inhibits:** it adds complexity that may not pay off for simple UIs. The abstractions may not fit some UI toolkits, and a UI can flood the model with update events.
-- **Game example:**
-  - `GameModel` holds the board, the players and whose turn it is.
-  - `GameScreen` (the view) renders it.
-  - `InputController` maps taps to moves.
-  - The model notifies the view through listeners.
-
-  The pattern is very common in TDT4240 projects, often combined with a State-based screen manager.
+- **Game example:** `GameModel` holds the board, players and turn; `GameScreen` (the view) renders it; `InputController` maps taps to moves; the model notifies the view through listeners. Very common in TDT4240 projects, often with a State-based screen manager.
 - **Don't use when:** the UI is trivial or throwaway. Also consider whether a pure ECS game loop already separates data (components) from behaviour (systems). In that case, say how the two fit together rather than forcing MVC on top.
 
 ### 3.3 Pipe-and-Filter
@@ -146,13 +130,8 @@ The **solution** is itself described by:
   - Connector: **request/reply**, often over a network.
   - A component may act as both client and server.
 - **Constraints:** Clients connect to servers. Servers may be clients of other servers, but the number of tiers may be restricted.
-- **Promotes:**
-  - modifiability and reuse, because common services are in one place;
-  - security and consistency, because control is centralised;
-  - scalability, because servers can be replicated.
-- **Inhibits:**
-  - the server can be a **performance bottleneck** and a **single point of failure**;
-  - where each piece of functionality lives (client or server) is a decision that is complex and costly to change later.
+- **Promotes:** modifiability and reuse (common services in one place), security and consistency (centralised control), scalability (servers can be replicated).
+- **Inhibits:** the server can be a **performance bottleneck** and a **single point of failure**; where functionality lives (client or server) is costly to change later.
 - **Game example:** An authoritative game server, or a Backend-as-a-Service (BaaS) such as Firebase used as the server, that validates moves and stores lobbies and high scores. Android clients send requests and receive state.
 - **Don't use when:** all participants are equal and there is no trusted central party (use P2P). Also avoid it where the server's cost and single point of failure are unacceptable.
 
@@ -164,16 +143,8 @@ The **solution** is itself described by:
   - Connectors: request/reply interaction, where a search or request is routed through intermediate peers.
   - Peers join and leave dynamically. There may be special peers such as supernodes.
 - **Constraints:** Rules may limit how many connections a peer has, and may define peer roles.
-- **Promotes:**
-  - availability, because there is no single point of failure;
-  - scalability, because every peer adds capacity;
-  - lower cost, because no dedicated server is needed.
-- **Inhibits:**
-  - security;
-  - data consistency;
-  - availability of *particular* data, since peers can leave;
-  - backup and recovery are more complex;
-  - small systems may not reach their quality goals.
+- **Promotes:** availability (no single point of failure), scalability (every peer adds capacity), lower cost (no dedicated server).
+- **Inhibits:** security, data consistency, availability of *particular* data (peers leave), backup and recovery; small systems may not reach their quality goals.
 - **Game example:** Two phones playing a local-network game where each device runs the simulation and exchanges moves directly, as in lockstep for a turn-based game. The classic outside example is BitTorrent file sharing.
 - **Don't use when:** you need an authoritative source for anti-cheat, scores, or consistency. Also avoid it when the number of peers is tiny and the benefits never appear.
 
@@ -189,12 +160,7 @@ The **solution** is itself described by:
   - Connectors: SOAP, REST and asynchronous messaging.
 - **Constraints:** Consumers use services only through their published interfaces or contracts. Service consumers connect to providers, but may use intermediaries such as the ESB.
 - **Promotes:** interoperability, modifiability (a service can be swapped behind its contract), and reuse.
-- **Inhibits:**
-  - complex to build;
-  - no control over how external services evolve;
-  - middleware adds performance overhead;
-  - services can become bottlenecks;
-  - usually no performance guarantees.
+- **Inhibits:** complex to build; no control over how external services evolve; middleware overhead; services can become bottlenecks; usually no performance guarantees.
 - **Game example:** The game uses separate external services: authentication (an identity provider), payments, analytics and a push-notification service, each through its published API, composed by the app backend.
 - **Don't use when:** a single team owns a small monolith. The infrastructure is overkill for a student game unless the point is to integrate third-party services.
 
@@ -208,13 +174,7 @@ The **solution** is itself described by:
 - **Constraints:** All components connect to the event bus, not to each other.
 - **Looser than GoF Observer.** In Observer the *subject* holds direct references to its observers and calls them itself. In pub-sub the bus sits in between, so publishers and subscribers do not know each other.
 - **Promotes:** modifiability (add or remove subscribers without touching publishers), extensibility, and loose coupling.
-- **Inhibits:**
-  - **latency** increases;
-  - scalability suffers;
-  - message delivery time is **less predictable**;
-  - there is less control over message ordering;
-  - delivery is not guaranteed;
-  - it is **harder to test and reason about**, because control flow is implicit.
+- **Inhibits:** **latency**, scalability, **predictability** of delivery time, control over ordering, guaranteed delivery; **harder to test and reason about** because control flow is implicit.
 - **Game example:**
   - An in-game event bus: `EnemyDestroyed` is published, and the score system, sound system, achievements and analytics each subscribe.
   - Across the network: a Firebase Realtime Database listener pushes state changes to every client in a lobby.
@@ -245,20 +205,17 @@ The **solution** is itself described by:
 - **Context:** Businesses need to analyse very large volumes of data quickly, for example logs or telemetry.
 - **Problem:** Efficiently process a large data set by distributing it across many nodes, in a way that can be parallelised and is robust to node failure.
 - **Solution:**
-  - Elements:
-    - a **map** function, which filters and transforms records in parallel on many nodes;
-    - a **reduce** function, which combines the intermediate results;
-    - an infrastructure or framework (for example Hadoop) that allocates the software to hardware nodes, and schedules and monitors the jobs.
+  - Elements: a **map** function (filters and transforms records in parallel on many nodes), a **reduce** function (combines intermediate results), and an infrastructure (e.g. Hadoop) that allocates software to hardware nodes and schedules and monitors jobs. Frameworks such as Hadoop shuffle/sort intermediate results between map and reduce.
   - The pattern runs on a **distributed infrastructure, typically a commodity cluster**.
   - **[correction]** Wikipendium says it "needs specialised hardware". That is imprecise: the point is ordinary machines coordinated by a framework.
 - **Constraints:**
-  - The data to analyse must be divisible into independent subsets.
+  - The data to analyse exists as a set of files or partitions.
   - Map functions are stateless and do not communicate with each other.
-  - A map-to-reduce stage has a shuffle or sort in between.
+  - Map and reduce instances communicate only through the emitted `<key, value>` pairs, which the infrastructure shuffles and sorts.
 - **Promotes:** performance on big data through massive parallelism, scalability (add nodes), and availability, because failed tasks are re-run.
 - **Inhibits / limits:**
   - the overhead is not justified without a large data set;
-  - parallelism is lost if the data cannot be split into similar subsets;
+  - parallelism is lost if the data cannot be split into similar-sized subsets;
   - operations that need several reduce steps are complex to orchestrate.
 - **Game example:** Offline analysis of millions of match logs to balance weapons or compute global rankings. It is never part of the live game.
 - **Don't use when:** the data is small, the processing is interactive or real-time, or the data cannot be partitioned.
@@ -268,23 +225,15 @@ The **solution** is itself described by:
 - **Problem:** Split the system into computationally independent execution structures (groups of hardware and software), connected by some communication medium, for operational or business reasons.
 - **Solution:**
   - Elements: **tiers**, which are logical groupings of components, for example presentation, business logic and data.
-  - Each tier is deployed on its own hardware and software.
+  - Tiers are typically deployed on separate execution environments.
   - Relations: *is-part-of* (a component belongs to a tier), *communicates-with* (between tiers), and *allocated-to* (a tier runs on execution nodes).
   - It is a specialisation of the generic **deployment** (software-to-hardware) structure.
 - **Constraints:** A component belongs to exactly one tier.
+- **Category.** SAiP notes that multi-tier can be read as a C&C or an allocation pattern, depending on the criteria that define the tiers (component type/function vs computing infrastructure); the book catalogues it under allocation.
 - **Promotes:** security (the data tier can sit behind a firewall), performance and availability through per-tier scaling and replication, and modifiability.
 - **Inhibits:** substantial up-front cost and complexity. More network hops add latency.
-- **Tier vs layer.**
-  - A **layer** is a *module* (code-time) grouping with an allowed-to-use relation.
-  - A **tier** is an *allocation* (runtime and deployment) grouping of components onto execution environments.
-  - Several layers can run in one tier, and a tier boundary is always a process or network boundary.
-  - Mixing the two up is a classic exam and report error.
-- **Game example:**
-  - Tier 1: the Android client (presentation and local game logic).
-  - Tier 2: Cloud Functions (move validation and matchmaking).
-  - Tier 3: Firestore (data).
-
-  This belongs in the physical/deployment view, with the network types shown.
+- **Tier vs layer.** A **layer** is a *module* (code-time) grouping with an allowed-to-use relation; a **tier** is a runtime/deployment grouping of components onto execution environments. Several layers can run in one tier, and a tier boundary is typically a process or network boundary. Mixing them up is a classic exam and report error.
+- **Game example:** Android client (presentation, local logic), Cloud Functions (move validation, matchmaking), Firestore (data). Show it in the physical/deployment view, with network types.
 - **Don't use when:** everything runs on one device, such as a single-player offline game.
 
 ---
@@ -295,17 +244,17 @@ The **solution** is itself described by:
 |---|---|---|---|---|
 | Layered | Module | Modifiability, portability, reuse | Performance; up-front cost | Encapsulate, restrict dependencies, use an intermediary, abstract common services |
 | Broker | C&C | Modifiability, interoperability, availability | Latency, single point of failure, security, testability | Use an intermediary, discover service, encapsulate |
-| MVC | C&C | UI modifiability, testability of the model | Complexity for simple UIs | Increase semantic coherence, encapsulate, defer binding (listeners) |
+| MVC | C&C | UI modifiability, testability of the model | Complexity for simple UIs | Increase semantic coherence\*, encapsulate, defer binding (listeners) |
 | Pipe-and-Filter | C&C | Reuse, modifiability, concurrency | Interactivity; overhead | Encapsulate, introduce concurrency, split module |
 | Client-Server | C&C | Centralised control, reuse, scalability | Server as bottleneck and single point of failure | Increase resources, maintain multiple copies of computations, authorize actors |
-| Peer-to-Peer | C&C | Availability, scalability | Security, consistency | Active redundancy, discover service, replication |
+| Peer-to-Peer | C&C | Availability, scalability | Security, consistency | Active redundancy, discover service, maintain multiple copies of data |
 | SOA | C&C | Interoperability, modifiability | Performance, complexity, control of evolution | Discover service, orchestrate, tailor interface, use an intermediary |
 | Publish-Subscribe | C&C | Modifiability, extensibility | Latency, predictability, testability | Use an intermediary, defer binding (runtime registration) |
 | Shared-Data | C&C | Data consistency, accessor independence | Store bottleneck and single point of failure; coupling to the schema | Maintain multiple copies of data, transactions, limit access |
 | Map-Reduce | Allocation | Performance on big data, scalability | Overhead on small data; needs partitionable data | Introduce concurrency, increase resources, retry |
-| Multi-tier | Allocation | Security, per-tier scalability | Cost, latency | Separate entities, increase resources, load distribution |
+| Multi-tier | Allocation | Security, per-tier scalability | Cost, latency | Separate entities, increase resources, schedule resources, maintain multiple copies of computations (load balancer) |
 
-The tactic bundles are typical pairings for your own reasoning, not a list from the book.
+The tactic bundles are typical pairings for your own reasoning, not a list from the book. \*Tactic names follow the 3rd ed.; the 4th ed. (ch. 8) replaces "increase semantic coherence" with "redistribute responsibilities".
 
 ---
 
@@ -346,7 +295,7 @@ These are my own practice cases, not the original exam text.
 4. *A mobile game must later run on iOS and desktop, and the team wants to replace the Firebase backend next year without touching gameplay code.*
    **Layered.** It serves portability and modifiability, with a downward-only dependency on a backend abstraction. Client-Server describes the runtime interaction but does not answer the *code-structure* question.
 5. *In-game achievements, sound effects and analytics must all react to game events, and new reactors are added by different developers.*
-   **Publish-Subscribe.** Receivers are unknown and changing, and publishers must stay unchanged (modifiability). It was chosen over Observer because the bus decouples even the subject from its listeners. The latency cost is negligible within a single process.
+   **Publish-Subscribe.** Receivers are unknown and changing, and publishers must stay unchanged (modifiability). MVC was rejected because there is no UI/model separation question here; the receivers are independent reactors. The latency cost is negligible within a single process. (Side note: pub-sub beats a plain GoF Observer here because the bus decouples even the subject from its listeners.)
 
 ---
 
@@ -363,13 +312,13 @@ These are not in the 3rd-ed. ch. 13 catalogue. Use them for context, or to justi
 | Service mesh | Sidecar proxies handle inter-service communication: routing, retries, TLS, telemetry | Performance, availability, security, observability |
 | Event sourcing | Stores state as an append-only log of events and derives the current state by replaying it | Auditability, testability (replay); costs complexity |
 
-In the 4th ed. several of these appear inside the QA chapters. The exact chapter placement is unverified, so check the book.
+In the 4th ed. several of these appear in the QA chapters' Patterns sections (see the edition note at the top for the chapter mapping).
 
 ---
 
 ## 8. Coplien (1998): "Software Design Patterns: Common Questions and Answers"
 
-**Citation:** Coplien, J. O. (1998). *Software Design Patterns: Common Questions and Answers.* In *The Patterns Handbook: Techniques, Strategies, and Applications*, Cambridge University Press, pp. 311–320. It is a syllabus article; see `foundations.md` §8 for the list.
+**Citation:** Coplien, J. O. (1998). Software design patterns: Common questions and answers. In L. Rising (Ed.), *The Patterns Handbook: Techniques, Strategies, and Applications*. Cambridge University Press, pp. 311-320. It is a syllabus article; see `foundations.md` §8 for the list.
 
 The article is a Q&A introduction to what patterns are and where the software patterns movement comes from, namely the architect Christopher Alexander.
 
@@ -381,7 +330,7 @@ The article is a Q&A introduction to what patterns are and where the software pa
 |---|---|---|
 | Nature | Descriptive, passive | Prescriptive, active |
 | Role | Records structures observed in existing systems | Guides how to build: applying it helps generate the system and its properties |
-| Coplien's emphasis | Useful for description, but not what the patterns community is after | The kind of pattern the community aims to write |
+| Coplien's interest | | The article stresses generative patterns (check the text for his exact position) |
 
 **[correction]** Wikipendium equates non-generative patterns with "Gamma patterns", meaning the GoF. There is no confirmation that the article says this, so do not repeat it.
 
@@ -396,12 +345,9 @@ The article is a Q&A introduction to what patterns are and where the software pa
 7. **Resulting context**: the state after applying the pattern, including what is still unresolved, which often leads to other patterns.
 8. **Rationale**: why it works and where it came from.
 
-**Pattern language.** A pattern language is a structured collection of patterns that build on each other. Applied in sequence, each pattern's resulting context is the next one's context, and together they turn needs and constraints into an architecture. That is more than a *catalogue*, which is an unordered list.
+**Pattern language.** A pattern language is a structured collection of patterns that build on each other. Applied in sequence, each pattern's resulting context is the next one's context, so applying them in order moves a design from requirements to a complete architecture. That is more than a *catalogue*, which is an unordered list.
 
-**Idioms vs patterns.**
-- An **idiom** is a low-level pattern tied to one programming language, for example a C++ technique.
-- Coplien prefers design patterns that are language-independent, so an idiom can be recast as a more general pattern.
-- The article ends with an example: the C++ "Type Promotion" pattern, derived from an idiom and written in Alexandrian form.
+**Idioms vs patterns.** An **idiom** is a low-level pattern tied to one programming language (e.g. a C++ technique). Coplien prefers language-independent design patterns, so an idiom can be recast as a more general pattern. The article illustrates the idea with a C++ example written in Alexandrian form.
 
 **Exam-ready contrast:**
 - The SAiP triple is **context / problem / solution**.
