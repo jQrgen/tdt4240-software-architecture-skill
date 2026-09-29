@@ -1,64 +1,76 @@
 {
-  "skill_name": "tdt4240-software-architecture",
+  "skill_name": "software-architect",
   "evals": [
     {
       "id": 1,
-      "prompt": "TDT4240 exam practice: explain the quality attribute availability. Give a concrete scenario for an online multiplayer game server and the tactics that achieve it.",
-      "expected_output": "Definition of availability; a six-part concrete scenario (source, stimulus, artifact, environment, response, response measure) with a numeric, unit-bearing response measure; tactic tree grouped as detect faults / recover from faults (preparation-and-repair, reintroduction) / prevent faults with specific tactics named (e.g. heartbeat, ping/echo, active or passive redundancy, rollback, removal from service); at least one tradeoff (e.g. redundancy vs cost or performance). Chapter cited with both editions (4th ed. ch. 4, 3rd ed. ch. 5).",
+      "prompt": "Review PR #231 for layering violations. It adds a 'refund' use case to our Kotlin backend (modules: api, application, domain, infrastructure).",
+      "expected_output": "Runs git diff --stat base...HEAD (or gh pr diff) and reads the full diff; loads intended-architecture sources (ADRs, arch tests, build files) for touched modules; classifies the change; maps each new import edge onto an allowed-dependency table and flags e.g. domain importing an infrastructure/ORM/HTTP type with an OBSERVED file:line and quoted import; checks bypassed ports, idempotency of the refund, timeouts on the payment call, contract changes; returns the PR-variant report with a verdict (Approve / Approve with follow-ups / Request changes), at most ~7 findings each with severity, confidence, threatened QA, evidence, concrete fix, effort S/M/L and a preventing fitness function (e.g. ArchUnit or Konsist rule). No style nits.",
       "files": []
     },
     {
       "id": 2,
-      "prompt": "Which architectural pattern fits best, and why: a system where incoming audio is decoded, filtered, compressed and written to disk in a fixed sequence of independent steps?",
-      "expected_output": "Chooses Pipe-and-Filter; justifies with independent, reusable transformation steps and stream processing; names a runner-up (e.g. Layered or Pub-Sub) and why it loses; mentions a weakness (e.g. poor fit for interactive systems, data-format overhead between filters). Short, exam-style answer.",
+      "prompt": "Design a notification service (email, SMS, push) for our platform. It must keep accepting requests when a provider is down and deliver 99% of messages within 10 seconds at 500 msg/s peak. We're a TypeScript/Node shop.",
+      "expected_output": "Follows the build workflow: brief recon; asks at most 3-5 structure-changing questions or marks ASSUMED; writes 3-7 six-part scenarios with numeric response measures (availability under provider outage, latency p99, throughput) marked CONFIRMED/ASSUMED and a utility tree rated H/M/L; maps tactics (e.g. queue/asynchrony, retry with backoff, circuit breaker, redundant providers, idempotency keys, bounded queues) to scenarios with costs; compares patterns (e.g. queue-based async workers vs synchronous request/response) in an option/helped/hurt/cost/reversibility table with a rejected alternative; gives module layout with ports per provider, composition root, error and concurrency model and data ownership; writes ADRs with an 'Enforced by' field; produces a minimal compilable TypeScript skeleton with one vertical slice and fakes; adds dependency-cruiser or eslint-plugin-boundaries rules plus a cycle check and one QA-specific check; lists 'deliberately not doing'.",
       "files": []
     },
     {
       "id": 3,
-      "prompt": "What is the difference between a tactic and an architectural pattern? Keep it exam length.",
-      "expected_output": "Two to four sentences: a tactic is a design decision that targets the response of a single quality attribute; a pattern is a packaged solution to a recurring problem that bundles several tactics and affects several QAs, often with tradeoffs. One brief example (e.g. Layered uses the modifiability tactics of restricting dependencies and encapsulation). No invented page numbers.",
+      "prompt": "Write an ADR for our decision to replace the shared Postgres database between the orders and inventory services with an event-driven integration.",
+      "expected_output": "Uses templates/adr.md; checks the repo for existing ADR location and numbering (else docs/adr/NNNN-title.md); context names the driving scenarios (modifiability/deployability independence, availability) with measures; lists options considered including at least one rejected alternative (e.g. keep shared DB with schema ownership, synchronous API); states decision, consequences (eventual consistency, outbox/dual-write risk, operational cost), sensitivity and tradeoff points; mandatory 'Enforced by' filled with a concrete mechanism (e.g. no cross-service schema access check, contract tests), and 'Revisit when'. No AI attribution.",
       "files": []
     },
     {
       "id": 4,
-      "prompt": "We're writing the requirements document for our libGDX party game. Our chosen QAs are modifiability and usability. Can you check this scenario: 'The game should be easy to change.'",
-      "expected_output": "Explains the scenario is not testable and lacks the six parts; rewrites it as a concrete modifiability scenario (e.g. developer wants to add a new game mode, at design time, to the game logic module, change made and tested with no changes to networking code within a stated number of person-hours); suggests a matching usability scenario; points to templates/requirements-document.md. Coaches rather than writing the whole document.",
+      "prompt": "Recover the architecture of this repo. I inherited it last week and nobody documented anything.",
+      "expected_output": "Reads build files, entry points and package tree; runs read-only graph tooling or falls back to grep/build graph and says so; identifies build units, composition root, module dependency graph, cycles, external systems, data stores and deployment units, each with OBSERVED/MEASURED evidence; produces Mermaid sketches of module, C&C and allocation views; states an INFERRED intended model because no docs exist; lists hotspots from git history as pointers, not verdicts; separates AS-IS from any TO-BE suggestions; offers a quick vs deep pass.",
       "files": []
     },
     {
       "id": 5,
-      "prompt": "Explain Kruchten's 4+1 view model and how it maps onto what IEEE 1471 calls viewpoints and views.",
-      "expected_output": "Names the logical, process, development (implementation) and physical (deployment) views plus scenarios as the +1 that ties them together, with the main stakeholders and concerns of each; explains that IEEE 1471 defines a viewpoint as the specification/conventions for a view and a view as a representation of the system from that viewpoint, so the 4+1 views can each be declared as viewpoints. Mentions ISO/IEC/IEEE 42010 as the successor standard. Kruchten cited as IEEE Software 1995.",
+      "prompt": "Add architecture tests to our Kotlin Multiplatform project (modules :shared:domain, :shared:data, :androidApp, :iosApp). The domain must never depend on data or on platform code.",
+      "expected_output": "Starts from the enforcement ladder: first uses Gradle module boundaries (domain module has no dependency on data; implementation vs api), then adds Konsist (or ArchUnit for JVM-only code) tests for rules the build cannot express (no android.*/platform imports in domain, naming of use cases); baselines existing violations and ratchets; names tests after the rule/ADR; wires into the existing test/CI command; flags version-dependent syntax; does not modify build files beyond what the task requires without asking; runs the tests.",
       "files": []
     },
     {
       "id": 6,
-      "prompt": "Our group is doing the ATAM evaluation of another group's game. They use MVC on the client and Firebase as backend. Help us structure the utility tree and explain what sensitivity points, tradeoff points and risks are.",
-      "expected_output": "Defines the utility tree (utility -> QA -> refinement -> scenario, each rated on importance and difficulty, e.g. H/M/L); gives a few example leaves for the described system; defines sensitivity point, tradeoff point, risk and non-risk with an example of each tied to MVC or Firebase; outlines the report structure from templates/atam-evaluation.md; reminds them the official template takes precedence.",
+      "prompt": "Should orders and billing talk event-driven (Kafka) or request/response (REST)? We have 3 engineers and ~50 orders/minute.",
+      "expected_output": "Answers in the decision format: one-line recommendation (likely request/response or a simple outbox + queue given team size and load, justified); driving scenarios with measures; tactics; pattern plus runner-up; tradeoffs as sensitivity/tradeoff points (coupling vs consistency vs operational cost); what would change the answer (e.g. more consumers, independent release cadence, 100x load); smallest next step in code. Weighs team size and operational burden; does not recommend Kafka by default.",
       "files": []
     },
     {
       "id": 7,
-      "prompt": "What changed about interoperability between the 3rd and 4th edition of Software Architecture in Practice?",
-      "expected_output": "States that 3rd ed. ch. 6 Interoperability is replaced by 4th ed. ch. 7 Integrability, which is broader; mentions other new QA chapters (deployability ch. 5, energy efficiency ch. 6, safety ch. 10); flags that 4th-ed. tactic names should be checked against the student's copy of the book rather than asserted with false certainty; notes which edition TDT4240 uses this year is not publicly confirmed.",
+      "prompt": "Why is this Django monolith so hard to change? Every feature touches five apps. Is it ready to scale to 10x users?",
+      "expected_output": "Runs the repository review: recovers as-is structure; establishes or asks for top 3 QAs; reflexion comparison; measures hotspots (churn x size) and change coupling across app boundaries, optionally import-linter/pydeps graph; walks the smell catalogue (cyclic app dependencies, god models, fat signals, shared utils); utility tree with 5-8 leaves and analysis of top 3 scenarios with risks, non-risks, sensitivity and tradeoff points; groups into risk themes; now/next/later roadmap where each item has an ADR and a fitness function (e.g. import-linter contracts); rejects a big-bang rewrite unless justified; findings have file:line evidence.",
       "files": []
     },
     {
       "id": 8,
-      "prompt": "Review this process view description from our architecture document: 'The game has a main thread that does everything. Firebase is called when needed.'",
-      "expected_output": "Points out missing elements: concurrency units (render/game loop thread, network callbacks/async Firebase listeners), communication and synchronisation between them, how state is handed back to the render thread (e.g. Gdx.app.postRunnable in libGDX), a diagram (e.g. sequence or activity), and consistency with the logical view; suggests how the process view supports a performance or availability scenario; gives a short improved outline, not a full replacement text.",
+      "prompt": "Document the architecture of this Go service for new team members, using C4 and arc42.",
+      "expected_output": "Asks or states audience and purpose (descriptive); follows 42010 stakeholders/concerns/viewpoints/views; produces a lean arc42 skeleton with C4 levels 1-3 in Mermaid or Structurizr DSL generated from the recovered graph (go list); includes a view map, ranked quality goals with a conflict rule, intended vs actual layering, ADRs split into embodied vs proposed; links stated rules to enforcing checks (e.g. internal/ packages, go-arch-lint); every AS-IS claim cited.",
       "files": []
     },
     {
       "id": 9,
-      "prompt": "What is the exam format for TDT4240 this year? Is it multiple choice?",
-      "expected_output": "Gives what is publicly confirmed (4-hour written school exam in Inspera, digital appendix as the only aid, 50/50 with the project since Spring 2025, re-sit may be oral) and says clearly that current item types are not public, so it cannot say whether it is multiple choice; describes the 2015/2016 paper structure as historical practice material only; points to Blackboard and the course page. Must not invent a format or point split.",
+      "prompt": "We have a cyclic dependency between the 'billing' and 'accounts' packages in our Java app. How do we break it without a big refactor?",
+      "expected_output": "Cites the cycle with OBSERVED file:line imports in both directions; proposes the smallest structural change (dependency inversion via an interface owned by one side, extracting a shared kernel, or events) with tradeoffs and a runner-up; shows code for the change labelled with file paths; adds a cycle check (ArchUnit slices().should().beFreeOfCycles() or jdeps-based check) wired into the build, flagging version-dependent API; migration steps that keep main green.",
       "files": []
     },
     {
       "id": 10,
-      "prompt": "Should we use an entity component system or plain inheritance for the game objects in our libGDX tower defense game? We care most about modifiability.",
-      "expected_output": "Compares ECS (composition, data-oriented, easy to add new behaviours via components/systems) with an inheritance hierarchy (simple for few types, brittle as combinations grow); ties the choice to a modifiability scenario and tactics (e.g. reduce coupling, increase cohesion, defer binding); names a tradeoff (learning curve, indirection, debugging difficulty; Ashley as libGDX's ECS library as an option); recommends based on project size and tells them to document the decision and rationale in the architecture document.",
+      "prompt": "Add a 'favorites' feature to this Android app (feature modules, Hilt, Room). Just get it done properly.",
+      "expected_output": "Scales the workflow for a small feature: recon of existing module layout and conventions; 1-2 inline scenarios; places the feature in a new or existing feature module following repo idioms; defines repository interface in domain and Room implementation in data; wires via existing Hilt modules; implements one vertical slice with a fake for tests; adds one architecture test or Gradle boundary; at most one ADR; does not introduce new frameworks; build and tests run.",
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "Can you check this function for off-by-one errors and fix the naming?",
+      "expected_output": "Recognizes this is line-level bug hunting and style, outside the skill's scope; says so briefly and hands off to normal code review (or just does ordinary review) without applying the architecture apparatus (no scenarios, ADRs or utility tree).",
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "Our Python FastAPI service must stay under p95 200 ms while calling two downstream APIs. Review the architecture of the request path and tell me what's missing.",
+      "expected_output": "Writes the performance and availability scenarios with the stated measure; traces the request path through code with file:line evidence; checks for missing tactics (timeouts, concurrency of the two calls via asyncio.gather, caching, bounded retries, circuit breaker, connection pooling, blocking calls in async handlers); identifies sensitivity and tradeoff points (e.g. cache TTL affects latency and freshness); ranked findings with severity, confidence, fix code, effort and a preventing fitness function (e.g. latency budget test, import-linter rule keeping HTTP clients in adapters); distinguishes MEASURED from INFERRED claims and suggests a load test if no measurements exist.",
       "files": []
     }
   ]
