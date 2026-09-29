@@ -1,0 +1,65 @@
+{
+  "skill_name": "tdt4240-software-architecture",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "TDT4240 exam practice: explain the quality attribute availability. Give a concrete scenario for an online multiplayer game server and the tactics that achieve it.",
+      "expected_output": "Definition of availability; a six-part concrete scenario (source, stimulus, artifact, environment, response, response measure) with a numeric, unit-bearing response measure; tactic tree grouped as detect faults / recover from faults (preparation-and-repair, reintroduction) / prevent faults with specific tactics named (e.g. heartbeat, ping/echo, active or passive redundancy, rollback, removal from service); at least one tradeoff (e.g. redundancy vs cost or performance). Chapter cited with both editions (4th ed. ch. 4, 3rd ed. ch. 5).",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Which architectural pattern fits best, and why: a system where incoming audio is decoded, filtered, compressed and written to disk in a fixed sequence of independent steps?",
+      "expected_output": "Chooses Pipe-and-Filter; justifies with independent, reusable transformation steps and stream processing; names a runner-up (e.g. Layered or Pub-Sub) and why it loses; mentions a weakness (e.g. poor fit for interactive systems, data-format overhead between filters). Short, exam-style answer.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "What is the difference between a tactic and an architectural pattern? Keep it exam length.",
+      "expected_output": "Two to four sentences: a tactic is a design decision that targets the response of a single quality attribute; a pattern is a packaged solution to a recurring problem that bundles several tactics and affects several QAs, often with tradeoffs. One brief example (e.g. Layered uses the modifiability tactics of restricting dependencies and encapsulation). No invented page numbers.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "We're writing the requirements document for our libGDX party game. Our chosen QAs are modifiability and usability. Can you check this scenario: 'The game should be easy to change.'",
+      "expected_output": "Explains the scenario is not testable and lacks the six parts; rewrites it as a concrete modifiability scenario (e.g. developer wants to add a new game mode, at design time, to the game logic module, change made and tested with no changes to networking code within a stated number of person-hours); suggests a matching usability scenario; points to templates/requirements-document.md. Coaches rather than writing the whole document.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Explain Kruchten's 4+1 view model and how it maps onto what IEEE 1471 calls viewpoints and views.",
+      "expected_output": "Names the logical, process, development (implementation) and physical (deployment) views plus scenarios as the +1 that ties them together, with the main stakeholders and concerns of each; explains that IEEE 1471 defines a viewpoint as the specification/conventions for a view and a view as a representation of the system from that viewpoint, so the 4+1 views can each be declared as viewpoints. Mentions ISO/IEC/IEEE 42010 as the successor standard. Kruchten cited as IEEE Software 1995.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "Our group is doing the ATAM evaluation of another group's game. They use MVC on the client and Firebase as backend. Help us structure the utility tree and explain what sensitivity points, tradeoff points and risks are.",
+      "expected_output": "Defines the utility tree (utility -> QA -> refinement -> scenario, each rated on importance and difficulty, e.g. H/M/L); gives a few example leaves for the described system; defines sensitivity point, tradeoff point, risk and non-risk with an example of each tied to MVC or Firebase; outlines the report structure from templates/atam-evaluation.md; reminds them the official template takes precedence.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "What changed about interoperability between the 3rd and 4th edition of Software Architecture in Practice?",
+      "expected_output": "States that 3rd ed. ch. 6 Interoperability is replaced by 4th ed. ch. 7 Integrability, which is broader; mentions other new QA chapters (deployability ch. 5, energy efficiency ch. 6, safety ch. 10); flags that 4th-ed. tactic names should be checked against the student's copy of the book rather than asserted with false certainty; notes which edition TDT4240 uses this year is not publicly confirmed.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Review this process view description from our architecture document: 'The game has a main thread that does everything. Firebase is called when needed.'",
+      "expected_output": "Points out missing elements: concurrency units (render/game loop thread, network callbacks/async Firebase listeners), communication and synchronisation between them, how state is handed back to the render thread (e.g. Gdx.app.postRunnable in libGDX), a diagram (e.g. sequence or activity), and consistency with the logical view; suggests how the process view supports a performance or availability scenario; gives a short improved outline, not a full replacement text.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "What is the exam format for TDT4240 this year? Is it multiple choice?",
+      "expected_output": "Gives what is publicly confirmed (4-hour written school exam in Inspera, digital appendix as the only aid, 50/50 with the project since Spring 2025, re-sit may be oral) and says clearly that current item types are not public, so it cannot say whether it is multiple choice; describes the 2015/2016 paper structure as historical practice material only; points to Blackboard and the course page. Must not invent a format or point split.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "Should we use an entity component system or plain inheritance for the game objects in our libGDX tower defense game? We care most about modifiability.",
+      "expected_output": "Compares ECS (composition, data-oriented, easy to add new behaviours via components/systems) with an inheritance hierarchy (simple for few types, brittle as combinations grow); ties the choice to a modifiability scenario and tactics (e.g. reduce coupling, increase cohesion, defer binding); names a tradeoff (learning curve, indirection, debugging difficulty; Ashley as libGDX's ECS library as an option); recommends based on project size and tells them to document the decision and rationale in the architecture document.",
+      "files": []
+    }
+  ]
+}
